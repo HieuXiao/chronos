@@ -27,7 +27,6 @@ import type { Id, Todo } from "@/types";
 
 export function TodoList({ projectId }: { projectId: Id }) {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -36,7 +35,6 @@ export function TodoList({ projectId }: { projectId: Id }) {
       const rows = await todosDb.listTodos(projectId);
       if (!cancelled) {
         setTodos(rows);
-        setLoaded(true);
       }
     });
     return () => {
@@ -118,9 +116,6 @@ export function TodoList({ projectId }: { projectId: Id }) {
         </Button>
       </form>
 
-      {loaded && todos.length === 0 && (
-        <p className="py-4 text-center text-sm text-muted-foreground">Chưa có việc nào.</p>
-      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void onDragEnd(e)}>
         <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>

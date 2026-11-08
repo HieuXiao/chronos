@@ -1,17 +1,17 @@
-import { useNavigate } from "react-router";
 import { Square } from "lucide-react";
 import { useNow } from "@/hooks/useNow";
 import { TOGGLE_SHORTCUT_LABEL } from "@/hooks/useSystemIntegration";
 import { projectColor } from "@/lib/colors";
 import { elapsedSec, formatClock } from "@/lib/time";
 import { useAppStore } from "@/store/appStore";
+import { useUiStore } from "@/store/uiStore";
 
 /** The running timer, visible from every page, with a stop button. */
 export function RunningIndicator() {
   const running = useAppStore((s) => s.running);
   const projects = useAppStore((s) => s.projects);
   const stopTimer = useAppStore((s) => s.stopTimer);
-  const navigate = useNavigate();
+  const openSidebar = useUiStore((s) => s.openSidebar);
   const nowMs = useNow(1000, running !== null);
 
   if (!running) return null;
@@ -29,7 +29,7 @@ export function RunningIndicator() {
       </span>
       <button
         type="button"
-        onClick={() => navigate("/")}
+        onClick={() => openSidebar(running.projectId)}
         className="max-w-44 truncate hover:underline"
         title={`Đang chạy: ${project?.name ?? ""}`}
       >

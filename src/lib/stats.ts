@@ -32,21 +32,6 @@ export function dailyTotals(spans: SessionSpan[], nowMs: number): Map<string, nu
   return totals;
 }
 
-/**
- * Consecutive days with tracked time, ending today. If nothing is tracked yet
- * today the streak is still alive and counts up to yesterday.
- */
-export function currentStreak(daily: Map<string, number>, nowMs: number): number {
-  let day = startOfLocalDay(nowMs);
-  if (!(daily.get(dayKey(day)) ?? 0)) day = addLocalDays(day, -1);
-  let streak = 0;
-  while ((daily.get(dayKey(day)) ?? 0) > 0) {
-    streak += 1;
-    day = addLocalDays(day, -1);
-  }
-  return streak;
-}
-
 export interface ProjectTotals {
   totalSec: number;
   todaySec: number;

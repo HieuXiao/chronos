@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { projectColor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
 import type { Id } from "@/types";
+import { GoalsEditor } from "./GoalsEditor";
+import { IdentityEditor } from "./IdentityEditor";
+import { LinksSection } from "./LinksSection";
 import { NoteEditor } from "./NoteEditor";
+import { PurposeEditor } from "./PurposeEditor";
 import { TodoList } from "./TodoList";
 
 /**
- * Slides in from the right inside the timers area only, so the dashboard
- * stays visible above it.
+ * Project details, sliding in from the right: name, icon and colour, why it
+ * matters, its goals, todos, notes and related documents.
  */
 export function Sidebar() {
   const projectId = useUiStore((s) => s.sidebarProjectId);
@@ -47,29 +48,22 @@ export function Sidebar() {
       ref={panelRef}
       aria-hidden={!open}
       className={cn(
-        "absolute inset-y-0 right-0 z-20 flex w-[360px] max-w-full flex-col border-l bg-background shadow-2xl transition-transform duration-200 ease-out",
+        "fixed top-11 right-0 bottom-0 z-30 flex w-[400px] max-w-full flex-col border-l bg-background shadow-2xl transition-transform duration-200 ease-out",
         open ? "translate-x-0" : "translate-x-full",
       )}
     >
       {project && (
         <>
-          <header className="flex items-center gap-2 border-b px-4 py-3">
-            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: projectColor(project.color) }} />
-            {project.icon && <span className="leading-none">{project.icon}</span>}
-            <h2 className="min-w-0 flex-1 truncate font-semibold" title={project.name}>
-              {project.name}
-            </h2>
-            <Button variant="ghost" size="icon-sm" onClick={closeSidebar} aria-label="Đóng">
-              <X />
-            </Button>
-          </header>
+          <IdentityEditor project={project} onClose={closeSidebar} />
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <TodoList key={`todos-${project.id}`} projectId={project.id} />
-          </div>
-
-          <div className="border-t p-4">
+          <div className="grid min-h-0 flex-1 content-start gap-6 overflow-y-auto p-4">
+            <PurposeEditor project={project} />
+            <GoalsEditor project={project} />
+            <div className="-m-4">
+              <TodoList key={`todos-${project.id}`} projectId={project.id} />
+            </div>
             <NoteEditor key={`note-${project.id}`} projectId={project.id} />
+            <LinksSection projectId={project.id} />
           </div>
         </>
       )}

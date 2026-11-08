@@ -25,19 +25,19 @@ export async function createProject(input: NewProject): Promise<Project> {
   const db = await getDb();
   const rows = await db.select<ProjectRow[]>(
     `INSERT INTO projects
-       (name, color, icon, target_hours, status, created_at, archived, start_date, end_date, sample)
-     VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
+       (name, color, icon, target_hours, created_at, archived, start_date, end_date, sample, purpose)
+     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9)
      RETURNING *`,
     [
       input.name.trim(),
       input.color ?? null,
       input.icon ?? null,
       input.targetHours ?? null,
-      input.status ?? "active",
       nowUtc(),
       input.startDate ?? dayKey(Date.now()),
       input.endDate ?? null,
       input.sample ? 1 : 0,
+      input.purpose ?? null,
     ],
   );
   return toProject(expectRow(rows, "project vừa tạo"));
@@ -48,10 +48,10 @@ const PATCH_COLUMNS = {
   color: "color",
   icon: "icon",
   targetHours: "target_hours",
-  status: "status",
   archived: "archived",
   startDate: "start_date",
   endDate: "end_date",
+  purpose: "purpose",
 } as const satisfies Record<keyof ProjectPatch, string>;
 
 export async function updateProject(id: Id, patch: ProjectPatch): Promise<Project> {

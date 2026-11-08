@@ -1,20 +1,31 @@
 import type { Project } from "@/types";
 
 /**
- * Categorical project colors, stepped for the dark surface.
- * The ORDER is what keeps neighbouring series distinguishable for colour-blind
- * users (validated: adjacent CVD ΔE ≥ 8.4, normal-vision ΔE ≥ 19.3, ≥ 3:1 on
- * the background). New projects take the next unused slot; never generate hues.
+ * Project colors, one unified family: Notion-like muted tones (a touch of
+ * grey in every hue) so cards, icons and chart segments sit calmly on the
+ * warm-neutral surfaces in light and dark mode. Validated as a categorical
+ * palette: all adjacent pairs stay apart for normal and colour-blind vision,
+ * and the first eight (taken first by new projects) clear CVD ΔE ≥ 8.
+ * A colour in use by an unfinished project can't be picked again
+ * (see `takenColors`).
  */
 export const PROJECT_COLORS = [
-  "#3987e5", // blue
-  "#d95926", // orange
-  "#199e70", // aqua
-  "#c98500", // yellow
-  "#d55181", // magenta
-  "#008300", // green
-  "#9085e9", // violet
-  "#e66767", // red
+  "#2f7dc4", // blue
+  "#d2691e", // orange
+  "#7b5cc2", // purple
+  "#237a4b", // green
+  "#d45a9c", // pink
+  "#a9791f", // mustard
+  "#00939c", // teal
+  "#c63f38", // red
+  "#4a6bc0", // indigo
+  "#c2566b", // rose
+  "#7e8c2a", // olive
+  "#b04a7f", // plum
+  "#2e9e8a", // jade
+  "#a8602f", // brown
+  "#9a6fc4", // lavender
+  "#5c8a3a", // moss
 ] as const;
 
 export const DEFAULT_PROJECT_COLOR = PROJECT_COLORS[0];
@@ -26,9 +37,22 @@ export function projectColor(color: string | null | undefined): string {
   return color ?? DEFAULT_PROJECT_COLOR;
 }
 
-/** First palette slot no active project uses yet (cycles only after all 8 are taken). */
-export function nextProjectColor(projects: Project[]): string {
-  return nextProjectColors(projects, 1)[0]!;
+/**
+ * Colours held by unfinished projects (not archived and below their total
+ * hours), mapped to the project's name. `exceptId` is the project being edited.
+ */
+export function takenColors(
+  projects: Project[],
+  totalHoursOf: (id: number) => number,
+  exceptId?: number,
+): Map<string, string> {
+  const taken = new Map<string, string>();
+  for (const p of projects) {
+    if (p.id === exceptId || p.archived || !p.color) continue;
+    const finished = p.targetHours != null && totalHoursOf(p.id) >= p.targetHours;
+    if (!finished) taken.set(p.color, p.name);
+  }
+  return taken;
 }
 
 /** The next `count` palette slots for new projects, in palette order. */

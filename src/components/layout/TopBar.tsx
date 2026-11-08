@@ -1,46 +1,36 @@
-import { NavLink } from "react-router";
 import { Settings, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/uiStore";
-import { ExportMenu } from "./ExportMenu";
 import { RunningIndicator } from "./RunningIndicator";
+import { WindowControls } from "./WindowControls";
 
-const navClass = ({ isActive }: { isActive: boolean }) =>
-  cn(
-    "rounded-md px-3 py-1 text-sm transition-colors",
-    isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
-  );
-
+/**
+ * The window's title bar and the app header in one row: drag anywhere empty
+ * to move the window, double-click to maximize. Window buttons sit at the right.
+ */
 export function TopBar() {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
   return (
-    <header className="flex h-11 shrink-0 items-center gap-4 border-b px-4">
-      <div className="flex items-center gap-2 font-semibold">
-        <Timer className="size-4 text-green-500" />
-        Chronos
+    <header data-tauri-drag-region className="flex h-11 shrink-0 select-none items-center border-b pl-4">
+      <div data-tauri-drag-region className="flex items-center gap-2 text-sm font-semibold">
+        <span className="pointer-events-none flex size-6 items-center justify-center rounded-md bg-primary/10">
+          <Timer className="size-3.5 text-primary" />
+        </span>
+        <span className="pointer-events-none">Chronos</span>
       </div>
-      <nav className="flex items-center gap-1">
-        <NavLink to="/" end className={navClass}>
-          Bộ đếm
-        </NavLink>
-        <NavLink to="/history" className={navClass}>
-          Lịch sử
-        </NavLink>
-        <NavLink to="/insights" className={navClass}>
-          Thống kê
-        </NavLink>
-      </nav>
-      <div className="ml-auto flex min-w-0 items-center gap-1">
-        <div className="mr-2 min-w-0">
+
+      <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-center justify-end gap-1 pr-2">
+        <div className="min-w-0">
           <RunningIndicator />
         </div>
-        <ExportMenu />
-        <Button variant="ghost" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Cài đặt">
+        <Button variant="ghost" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Cài đặt" title="Cài đặt">
           <Settings />
         </Button>
       </div>
+
+      <span aria-hidden="true" className="h-5 w-px bg-border" />
+      <WindowControls />
     </header>
   );
 }

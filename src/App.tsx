@@ -1,20 +1,19 @@
 import { useEffect } from "react";
-import { HashRouter, Route, Routes } from "react-router";
-import { DayReviewDialog } from "@/components/goals/DayReviewDialog";
-import { TopBar } from "@/components/layout/TopBar";
 import { SettingsDialog } from "@/components/layout/SettingsDialog";
+import { TopBar } from "@/components/layout/TopBar";
 import { ProjectDialog } from "@/components/projects/ProjectDialog";
+import { ProjectGrid } from "@/components/projects/ProjectGrid";
+import { ReportDialog } from "@/components/report/ReportDialog";
+import { ReportSection } from "@/components/report/ReportSection";
+import { Sidebar } from "@/components/sidebar/Sidebar";
 import { IdleDialog } from "@/components/timers/IdleDialog";
 import { StopNoteDialog } from "@/components/timers/StopNoteDialog";
 import { Toaster } from "@/components/ui/sonner";
-import { useReviewReminder } from "@/hooks/useReviewReminder";
 import { useIdleWatcher } from "@/hooks/useIdleWatcher";
 import { useSystemIntegration } from "@/hooks/useSystemIntegration";
-import { HistoryPage } from "@/pages/HistoryPage";
-import { HomePage } from "@/pages/HomePage";
-import { InsightsPage } from "@/pages/InsightsPage";
 import { useAppStore } from "@/store/appStore";
 
+/** One page: the report on top, the project cards below, details in a sidebar. */
 export default function App() {
   const init = useAppStore((s) => s.init);
   const dbStatus = useAppStore((s) => s.dbStatus);
@@ -34,27 +33,31 @@ export default function App() {
   }
 
   return (
-    <HashRouter>
+    <>
       <div className="flex h-full flex-col">
         <TopBar />
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 flex-1 overflow-y-auto">
           {dbStatus === "ready" && (
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/insights" element={<InsightsPage />} />
-            </Routes>
+            <>
+              <ReportSection />
+              <ProjectGrid />
+            </>
           )}
         </main>
       </div>
-      {dbStatus === "ready" && <BackgroundServices />}
+      {dbStatus === "ready" && (
+        <>
+          <BackgroundServices />
+          <Sidebar />
+          <ReportDialog />
+        </>
+      )}
       <ProjectDialog />
       <StopNoteDialog />
       <IdleDialog />
       <SettingsDialog />
-      {dbStatus === "ready" && <DayReviewDialog />}
       <Toaster />
-    </HashRouter>
+    </>
   );
 }
 
@@ -63,11 +66,10 @@ function BackgroundServices() {
   useSystemIntegration();
   useIdleWatcher();
   useDayRollover();
-  useReviewReminder();
   return null;
 }
 
-/** Re-reads data after local midnight so "today" and the heatmap move on. */
+/** Re-reads data after local midnight so "today" moves on. */
 function useDayRollover() {
   const refresh = useAppStore((s) => s.refresh);
   useEffect(() => {

@@ -1,4 +1,4 @@
-import type { Note, Project, ProjectStatus, Session, SessionSource, SessionSpan, Todo } from "@/types";
+import type { Note, Project, Session, SessionSource, SessionSpan, Todo } from "@/types";
 
 /** Raw row shapes as returned by SQLite (snake_case, 0/1 booleans). */
 
@@ -8,12 +8,12 @@ export interface ProjectRow {
   color: string | null;
   icon: string | null;
   target_hours: number | null;
-  status: string | null;
   created_at: string;
   archived: number | null;
   start_date: string | null;
   end_date: string | null;
   sample: number | null;
+  purpose: string | null;
 }
 
 export interface SessionRow {
@@ -49,12 +49,12 @@ export function toProject(row: ProjectRow): Project {
     color: row.color,
     icon: row.icon,
     targetHours: row.target_hours,
-    status: (row.status ?? "active") as ProjectStatus,
     createdAt: row.created_at,
     archived: row.archived === 1,
     startDate: row.start_date ?? null,
     endDate: row.end_date ?? null,
     sample: row.sample === 1,
+    purpose: row.purpose ?? null,
   };
 }
 

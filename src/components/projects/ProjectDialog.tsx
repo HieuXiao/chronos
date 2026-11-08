@@ -1,34 +1,29 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DEFAULT_PROJECT_COLOR, PROJECT_COLORS, nextProjectColor } from "@/lib/colors";
+import { useTakenColors } from "@/hooks/useStats";
+import { DEFAULT_PROJECT_COLOR, PROJECT_COLORS } from "@/lib/colors";
 import { goalOn, indexGoals, minutesToInput, parseHoursInput } from "@/lib/goals";
 import { dayKey } from "@/lib/time";
-import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
+import { ColorPicker } from "./ColorPicker";
+import { IconPicker } from "./IconPicker";
 
 export function ProjectDialog() {
   const state = useUiStore((s) => s.projectDialog);
   const setProjectDialog = useUiStore((s) => s.setProjectDialog);
   const createProject = useAppStore((s) => s.createProject);
   const updateProject = useAppStore((s) => s.updateProject);
-  const setGoals = useAppStore((s) => s.setGoals);
+  const setGoal = useAppStore((s) => s.setGoal);
 
   const editing = state?.mode === "edit" ? state.project : null;
+  const taken = useTakenColors(editing?.id);
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
-  const [icon, setIcon] = useState("");
+  const [icon, setIcon] = useState<string | null>(null);
   const [color, setColor] = useState<string>(DEFAULT_PROJECT_COLOR);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -40,8 +35,9 @@ export function ProjectDialog() {
     if (!state) return;
     setName(editing?.name ?? "");
     setTarget(editing?.targetHours != null ? String(editing.targetHours) : "");
-    setIcon(editing?.icon ?? "");
-    setColor(editing?.color ?? nextProjectColor(useAppStore.getState().projects));
+    setIcon(editing?.icon ?? null);
+    // A new project gets the first colour no unfinished project is using.
+    setColor(editing?.color ?? PROJECT_COLORS.find((c) => !taken.has(c)) ?? DEFAULT_PROJECT_COLOR);
     setStartDate(editing ? (editing.startDate ?? "") : dayKey(Date.now()));
     setEndDate(editing?.endDate ?? "");
     const minutes = editing
@@ -50,6 +46,7 @@ export function ProjectDialog() {
     setInitialDailyMin(minutes);
     setDailyMin(minutesToInput(minutes));
     setSubmitting(false);
+    // Reset only when the dialog opens.
   }, [state, editing]);
 
   const targetNumber = target.trim() === "" ? null : Number(target.replace(",", "."));
@@ -57,9 +54,10 @@ export function ProjectDialog() {
   // 'YYYY-MM-DD' strings compare correctly as text.
   const datesInvalid = startDate !== "" && endDate !== "" && endDate < startDate;
   const dailyMinutes = parseHoursInput(dailyMin);
-  const dailyInvalid = dailyMinutes === null || dailyMinutes > 24 * 60;
+  const dailyInvalid = dailyMinutes === null || dailyMinutes > 16 * 60;
+  const colorTaken = taken.has(color) && color !== editing?.color;
   const canSubmit =
-    name.trim().length > 0 && startDate !== "" && !targetInvalid && !datesInvalid && !dailyInvalid && !submitting;
+    name.trim().length > 0 && startDate !== "" && !targetInvalid && !datesInvalid && !dailyInvalid && !colorTaken && !submitting;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -68,7 +66,7 @@ export function ProjectDialog() {
     const values = {
       name: name.trim(),
       targetHours: targetNumber,
-      icon: icon.trim() || null,
+      icon,
       color,
       startDate,
       endDate: endDate || null,
@@ -78,7 +76,7 @@ export function ProjectDialog() {
     else id = (await createProject(values))?.id;
     let ok = id !== undefined;
     if (ok && id !== undefined && dailyMinutes !== null && dailyMinutes !== initialDailyMin) {
-      ok = await setGoals([{ projectId: id, minutes: dailyMinutes }]);
+      ok = await setGoal(id, dailyMinutes);
     }
     setSubmitting(false);
     if (ok) setProjectDialog(null);
@@ -90,26 +88,33 @@ export function ProjectDialog() {
         <form onSubmit={onSubmit} className="grid gap-4">
           <DialogHeader>
             <DialogTitle>{editing ? "Sửa project" : "Thêm project"}</DialogTitle>
-            <DialogDescription>
-              Đặt tổng số giờ mục tiêu, hạn hoàn thành và số giờ tối thiểu mỗi ngày cho nhóm công việc này.
-            </DialogDescription>
+            <DialogDescription className="sr-only">Tên, biểu tượng, màu, mục tiêu và thời gian của project.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-2">
             <Label htmlFor="project-name">Tên project</Label>
-            <Input
-              id="project-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Học tiếng Nhật"
-              autoFocus
-              maxLength={80}
-            />
+            <div className="flex gap-2">
+              <IconPicker value={icon} color={color} onChange={setIcon} />
+              <Input
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="VD: Học tiếng Nhật"
+                autoFocus
+                maxLength={80}
+                className="h-9"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
+          <div className="grid gap-2">
+            <Label>Màu</Label>
+            <ColorPicker value={color} onChange={setColor} taken={taken} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <Label htmlFor="project-target">Mục tiêu (giờ)</Label>
+              <Label htmlFor="project-target">Tổng giờ cần đạt</Label>
               <Input
                 id="project-target"
                 inputMode="decimal"
@@ -120,7 +125,7 @@ export function ProjectDialog() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="project-daily">Tối thiểu/ngày (giờ)</Label>
+              <Label htmlFor="project-daily">Tối thiểu mỗi ngày (giờ)</Label>
               <Input
                 id="project-daily"
                 inputMode="decimal"
@@ -131,31 +136,11 @@ export function ProjectDialog() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="project-icon">Biểu tượng</Label>
-              <Input
-                id="project-icon"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                placeholder="📘"
-                maxLength={4}
-                className="text-center"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label htmlFor="project-start">Ngày bắt đầu</Label>
-              <Input
-                id="project-start"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-              />
+              <Label htmlFor="project-start">Bắt đầu</Label>
+              <Input id="project-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="project-end">Hạn hoàn thành (tuỳ chọn)</Label>
+              <Label htmlFor="project-end">Hạn (tuỳ chọn)</Label>
               <Input
                 id="project-end"
                 type="date"
@@ -165,30 +150,7 @@ export function ProjectDialog() {
                 aria-invalid={datesInvalid || undefined}
               />
             </div>
-            {datesInvalid && (
-              <p className="col-span-2 text-xs text-destructive">Hạn hoàn thành phải sau ngày bắt đầu.</p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Màu</Label>
-            <div className="flex gap-2">
-              {PROJECT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  aria-label={`Màu ${c}`}
-                  onClick={() => setColor(c)}
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded-full ring-offset-2 ring-offset-background transition",
-                    color === c && "ring-2 ring-foreground",
-                  )}
-                  style={{ backgroundColor: c }}
-                >
-                  {color === c && <Check className="size-4 text-black/70" />}
-                </button>
-              ))}
-            </div>
+            {datesInvalid && <p className="col-span-2 text-xs text-destructive">Hạn phải sau ngày bắt đầu.</p>}
           </div>
 
           <DialogFooter>

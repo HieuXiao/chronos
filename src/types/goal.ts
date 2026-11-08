@@ -3,7 +3,9 @@ import type { LocalDate } from "./project";
 
 /**
  * One entry of a goal's history. The goal on a day is the entry with the
- * latest `effectiveFrom` on or before that day. `projectId` null = whole day.
+ * latest `effectiveFrom` on or before that day. `projectId` null = the
+ * work time needed per day (the line on the chart); otherwise the project's
+ * minimum per day.
  */
 export interface DailyGoal {
   id: Id;
@@ -13,24 +15,11 @@ export interface DailyGoal {
   effectiveFrom: LocalDate;
 }
 
-export interface MissLabel {
-  id: Id;
-  name: string;
-}
-
-/** Why a goal was missed on a day. `projectId` null = the whole-day goal. */
-export interface MissReason {
+/** Daily report of one project: why it went the way it did that day. */
+export interface DayReport {
   id: Id;
   day: LocalDate;
-  projectId: Id | null;
+  projectId: Id;
   note: string | null;
-  labelIds: Id[];
   updatedAt: IsoUtc;
-}
-
-export interface MissReasonInput {
-  day: LocalDate;
-  projectId: Id | null;
-  note: string | null;
-  labelIds: Id[];
 }

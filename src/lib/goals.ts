@@ -1,34 +1,33 @@
-import type { DailyGoal, Id, LocalDate, MissReason, Project, SessionSpan } from "@/types";
+import type { DailyGoal, Id, LocalDate, Project, SessionSpan } from "@/types";
 import { addLocalDays, dayKey, startOfLocalDay } from "./time";
 
 /**
- * Daily goals: a goal for the whole day plus a minimum per project ("nhóm công
- * việc"). A day is judged against the goals that were in effect on that day.
+ * Goals: the work time needed per day (drawn as a line on the chart, at most
+ * 16 h) and each project's minimum per day. A day is judged against the goals
+ * that were in effect on that day.
  */
 
+/** Highest work time per day that can be set. */
+export const MAX_DAY_HOURS = 16;
+
 export interface GoalIndex {
-  /** Whole-day goal history, oldest first. */
-  total: DailyGoal[];
+  /** Work time per day, oldest first. */
+  day: DailyGoal[];
   byProject: Map<Id, DailyGoal[]>;
-  /** Earliest day any goal applies; null when no goal was ever set. */
-  firstDay: LocalDate | null;
 }
 
 export function indexGoals(goals: DailyGoal[]): GoalIndex {
   const sorted = [...goals].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom) || a.id - b.id);
-  const total: DailyGoal[] = [];
-  const byProject = new Map<Id, DailyGoal[]>();
-  let firstDay: LocalDate | null = null;
+  const index: GoalIndex = { day: [], byProject: new Map() };
   for (const g of sorted) {
-    if (g.minutes > 0 && (firstDay === null || g.effectiveFrom < firstDay)) firstDay = g.effectiveFrom;
-    if (g.projectId === null) total.push(g);
+    if (g.projectId === null) index.day.push(g);
     else {
-      const list = byProject.get(g.projectId) ?? [];
+      const list = index.byProject.get(g.projectId) ?? [];
       list.push(g);
-      byProject.set(g.projectId, list);
+      index.byProject.set(g.projectId, list);
     }
   }
-  return { total, byProject, firstDay };
+  return index;
 }
 
 /** Goal minutes in effect on `day` (0 = none). Entries must be oldest first. */
@@ -64,23 +63,20 @@ export function dailyProjectTotals(spans: SessionSpan[], nowMs: number): Map<Loc
   return result;
 }
 
-export interface GoalItem {
-  /** null = the whole-day goal. */
-  projectId: Id | null;
-  targetMin: number;
-  actualSec: number;
-  met: boolean;
-  /** Minutes still missing (0 when met). */
-  shortMin: number;
-}
+/** Clearly over the minimum: at least 20% and 15 minutes more. */
+export const OVER_RATIO = 1.2;
+export const OVER_MIN_MINUTES = 15;
 
-export interface DayEvaluation {
-  day: LocalDate;
-  /** Whole-day goal first (when set), then projects in creation order. */
-  items: GoalItem[];
-  missed: GoalItem[];
-  /** The day is over, so a miss is final (today is still in progress). */
-  final: boolean;
+export type DayStatus = "short" | "met" | "over";
+
+export const STATUS_LABEL: Record<DayStatus, string> = { short: "Chưa đạt", met: "Đạt", over: "Vượt" };
+
+/** How a project did against its minimum; null when it has no minimum. */
+export function dayStatus(actualSec: number, targetMin: number): DayStatus | null {
+  if (targetMin <= 0) return null;
+  const actualMin = actualSec / 60;
+  if (actualMin < targetMin) return "short";
+  return actualMin >= targetMin * OVER_RATIO && actualMin - targetMin >= OVER_MIN_MINUTES ? "over" : "met";
 }
 
 /** Whether `project` counts on `day`: active and within its start date / deadline. */
@@ -91,37 +87,30 @@ export function projectActiveOn(project: Project, day: LocalDate): boolean {
   return true;
 }
 
-function item(projectId: Id | null, targetMin: number, actualSec: number): GoalItem {
-  const shortMin = Math.max(0, Math.ceil(targetMin - actualSec / 60));
-  return { projectId, targetMin, actualSec, met: shortMin === 0, shortMin };
-}
-
-export function evaluateDay(
-  day: LocalDate,
-  perProject: Map<Id, number> | undefined,
+/**
+ * Days in a row the project did its part: met its minimum when it has one,
+ * otherwise any tracked time. Ends yesterday, or today once today counts.
+ */
+export function projectStreak(
+  projectId: Id,
+  perDay: Map<LocalDate, Map<Id, number>>,
   index: GoalIndex,
-  projects: Project[],
   today: LocalDate,
-): DayEvaluation {
-  const items: GoalItem[] = [];
-  const totalTarget = goalOn(index.total, day);
-  if (totalTarget > 0) {
-    let sum = 0;
-    perProject?.forEach((sec) => (sum += sec));
-    items.push(item(null, totalTarget, sum));
+): number {
+  const done = (day: LocalDate) => {
+    const sec = perDay.get(day)?.get(projectId) ?? 0;
+    const min = goalOn(index.byProject.get(projectId), day);
+    return min > 0 ? sec / 60 >= min : sec > 0;
+  };
+  let day = today;
+  let streak = 0;
+  if (done(day)) streak = 1;
+  for (let i = 0; i < 3650; i++) {
+    day = dayKey(addLocalDays(new Date(`${day}T00:00`).getTime(), -1));
+    if (!done(day)) break;
+    streak += 1;
   }
-  for (const p of projects) {
-    const target = goalOn(index.byProject.get(p.id), day);
-    if (target <= 0 || !projectActiveOn(p, day)) continue;
-    items.push(item(p.id, target, perProject?.get(p.id) ?? 0));
-  }
-  return { day, items, missed: items.filter((i) => !i.met), final: day < today };
-}
-
-export const reasonKey = (day: LocalDate, projectId: Id | null) => `${day}|${projectId ?? 0}`;
-
-export function indexReasons(reasons: MissReason[]): Map<string, MissReason> {
-  return new Map(reasons.map((r) => [reasonKey(r.day, r.projectId), r]));
+  return streak;
 }
 
 /** Local days from `from` to `to` inclusive. */

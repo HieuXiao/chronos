@@ -1,9 +1,11 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useResolvedTheme } from "@/lib/theme"
 
 function Toaster(props: ToasterProps) {
+  const theme = useResolvedTheme()
   return (
     <Sonner
-      theme="dark"
+      theme={theme}
       position="bottom-right"
       richColors
       closeButton

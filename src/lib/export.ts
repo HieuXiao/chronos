@@ -1,20 +1,23 @@
-import type { Note, Project, Session, Todo } from "@/types";
+import type { DailyGoal, DayReport, Note, Project, ProjectLink, Session, Todo } from "@/types";
 import { nowUtc } from "./time";
 
 export interface FullExport {
   app: "chronos";
-  formatVersion: 1;
+  formatVersion: 4;
   exportedAt: string;
   projects: Project[];
   sessions: Session[];
   todos: Todo[];
   notes: Note[];
+  links: ProjectLink[];
+  goals: DailyGoal[];
+  reports: DayReport[];
 }
 
 export function buildJsonExport(data: Omit<FullExport, "app" | "formatVersion" | "exportedAt">): string {
   const payload: FullExport = {
     app: "chronos",
-    formatVersion: 1,
+    formatVersion: 4,
     exportedAt: nowUtc(),
     ...data,
   };

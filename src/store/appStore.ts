@@ -5,18 +5,7 @@ import * as projectsDb from "@/db/queries/projects";
 import * as sessionsDb from "@/db/queries/sessions";
 import { attempt, errorMessage } from "@/lib/errors";
 import { dayKey } from "@/lib/time";
-import type {
-  DailyGoal,
-  Id,
-  MissLabel,
-  MissReason,
-  MissReasonInput,
-  NewProject,
-  Project,
-  ProjectPatch,
-  Session,
-  SessionSpan,
-} from "@/types";
+import type { DailyGoal, DayReport, Id, NewProject, Project, ProjectPatch, Session, SessionSpan } from "@/types";
 import { useUiStore } from "./uiStore";
 
 export type DbStatus = "idle" | "connecting" | "ready" | "error";
@@ -35,10 +24,10 @@ interface AppState {
   running: Session | null;
   /** Every session's time range, oldest first. Source of all statistics. */
   spans: SessionSpan[];
-  /** Goal history (whole day + per project). */
+  /** Goal history: work time per day and each project's minimum per day. */
   goals: DailyGoal[];
-  labels: MissLabel[];
-  reasons: MissReason[];
+  /** Why each project went the way it did on a day. */
+  reports: DayReport[];
   settings: Record<string, string>;
 
   init: () => Promise<void>;
@@ -58,12 +47,9 @@ interface AppState {
   /** Drops [idleFromMs, resumeAtMs) from the running session. */
   discardIdle: (idleFromMs: number, resumeAtMs: number) => Promise<void>;
 
-  /** Sets goals from today on; `null` project = whole day. Minutes 0 removes a goal. */
-  setGoals: (goals: { projectId: Id | null; minutes: number }[]) => Promise<boolean>;
-  saveReasons: (inputs: MissReasonInput[]) => Promise<boolean>;
-  createLabel: (name: string) => Promise<MissLabel | undefined>;
-  renameLabel: (id: Id, name: string) => Promise<void>;
-  deleteLabel: (id: Id) => Promise<void>;
+  /** Sets a goal from today on (`projectId` null = work time per day). Minutes 0 removes it. */
+  setGoal: (projectId: Id | null, minutes: number) => Promise<boolean>;
+  saveReport: (day: string, projectId: Id, note: string) => Promise<void>;
   setSetting: (key: string, value: string) => Promise<void>;
 }
 
@@ -90,8 +76,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     running: null,
     spans: [],
     goals: [],
-    labels: [],
-    reasons: [],
+    reports: [],
     settings: {},
 
     init: async () => {
@@ -109,16 +94,15 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     refresh: async () => {
       await attempt("Không tải được dữ liệu", async () => {
-        const [projects, running, spans, goals, labels, reasons, settings] = await Promise.all([
+        const [projects, running, spans, goals, reports, settings] = await Promise.all([
           projectsDb.listProjects({ includeArchived: true }),
           sessionsDb.getRunningSession(),
           sessionsDb.listSessionSpans(),
           goalsDb.listGoals(),
-          goalsDb.listLabels(),
-          goalsDb.listReasons(),
+          goalsDb.listReports(),
           goalsDb.getSettings(),
         ]);
-        set({ projects, running, spans, goals, labels, reasons, settings });
+        set({ projects, running, spans, goals, reports, settings });
       });
     },
 
@@ -191,39 +175,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         await get().refresh();
       }),
 
-    setGoals: async (goals) => {
-      const today = dayKey(Date.now());
+    setGoal: async (projectId, minutes) => {
       const ok = await attempt("Không lưu được mục tiêu", async () => {
-        for (const g of goals) await goalsDb.setGoal(g.projectId, g.minutes, today);
+        await goalsDb.setGoal(projectId, minutes, dayKey(Date.now()));
         return true;
       });
-      await get().refresh();
+      set({ goals: await goalsDb.listGoals().catch(() => get().goals) });
       return ok === true;
     },
 
-    saveReasons: async (inputs) => {
-      const ok = await attempt("Không lưu được lý do", async () => {
-        for (const input of inputs) await goalsDb.saveReason(input);
-        return true;
-      });
-      await get().refresh();
-      return ok === true;
-    },
-
-    createLabel: async (name) => {
-      const label = await attempt("Không tạo được nhãn", () => goalsDb.createLabel(name));
-      if (label) set({ labels: await goalsDb.listLabels() });
-      return label;
-    },
-
-    renameLabel: async (id, name) => {
-      await attempt("Không đổi tên được nhãn", () => goalsDb.renameLabel(id, name));
-      await get().refresh();
-    },
-
-    deleteLabel: async (id) => {
-      await attempt("Không xoá được nhãn", () => goalsDb.deleteLabel(id));
-      await get().refresh();
+    saveReport: async (day, projectId, note) => {
+      await attempt("Không lưu được báo cáo", () => goalsDb.saveReport(day, projectId, note));
+      set({ reports: await goalsDb.listReports().catch(() => get().reports) });
     },
 
     setSetting: async (key, value) => {
