@@ -13,6 +13,9 @@ export interface Session {
   source: SessionSource;
 }
 
+/** Lightweight view of a session used for statistics. */
+export type SessionSpan = Pick<Session, "id" | "projectId" | "startedAt" | "endedAt">;
+
 export interface NewManualSession {
   projectId: Id;
   startedAt: IsoUtc;
@@ -24,8 +27,8 @@ export type SessionPatch = Partial<Pick<Session, "projectId" | "startedAt" | "en
 
 export interface SessionFilter {
   projectId?: Id;
-  /** Inclusive lower bound on `startedAt`. */
+  /** Sessions overlapping [from, to). Running sessions count as ending now. */
   from?: IsoUtc;
-  /** Exclusive upper bound on `startedAt`. */
   to?: IsoUtc;
+  limit?: number;
 }
