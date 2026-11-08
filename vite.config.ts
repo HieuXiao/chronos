@@ -27,5 +27,7 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    // Loaded from disk by the desktop shell, so bundle size is not a network concern.
+    chunkSizeWarningLimit: 1500,
   },
 });
