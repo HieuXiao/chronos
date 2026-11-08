@@ -54,14 +54,3 @@ export function takenColors(
   }
   return taken;
 }
-
-/** The next `count` palette slots for new projects, in palette order. */
-export function nextProjectColors(projects: Project[], count: number): string[] {
-  const active = projects.filter((p) => !p.archived);
-  const used = new Set(active.map((p) => p.color));
-  const free = PROJECT_COLORS.filter((c) => !used.has(c));
-  return Array.from(
-    { length: count },
-    (_, i) => free[i] ?? PROJECT_COLORS[(active.length + i) % PROJECT_COLORS.length]!,
-  );
-}

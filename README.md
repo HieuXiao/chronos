@@ -84,7 +84,6 @@ Mọi dữ liệu nằm trong một file SQLite trên máy bạn. Không cần t
 
 ### 💾 Dữ liệu
 - Xuất **JSON** (toàn bộ dữ liệu) hoặc **CSV** (bảng session, UTF-8 BOM để Excel hiển thị đúng tiếng Việt).
-- **Dữ liệu mẫu**: tạo nhanh vài project mẫu để thử app, và xoá sạch chúng chỉ với một thao tác.
 
 ## Cài đặt & chạy
 
@@ -122,7 +121,7 @@ Lệnh này khởi động Vite tại `http://localhost:1420` rồi mở cửa s
 npm run tauri build
 ```
 
-File cài đặt (`.msi` / `.exe` trên Windows) nằm trong `src-tauri/target/release/bundle/`.
+File cài đặt trên Windows nằm trong `src-tauri/target/release/bundle/`: `nsis/Chronos_<version>_x64-setup.exe` và `msi/Chronos_<version>_x64_en-US.msi`.
 
 ## Hướng dẫn sử dụng
 
@@ -131,8 +130,6 @@ File cài đặt (`.msi` / `.exe` trên Windows) nằm trong `src-tauri/target/r
 3. Sau khoảng **7 ngày** có dữ liệu, thẻ project bắt đầu hiển thị **ngày hoàn thành dự kiến**.
 4. Mở **Cài đặt** để đặt chỉ tiêu mỗi ngày và giờ nhắc tổng kết.
 5. Cuối ngày, ghi lý do cho các chỉ tiêu chưa đạt. Trang **Thống kê** sẽ cho bạn thấy xu hướng.
-
-> 💡 Muốn xem app trông thế nào khi đã có dữ liệu? Vào **Cài đặt → Tạo dữ liệu mẫu**.
 
 ### Phím tắt
 

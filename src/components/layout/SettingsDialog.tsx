@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { ArchiveRestore, Sparkles, Trash2 } from "lucide-react";
+import { ArchiveRestore, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DataLocationSection } from "@/components/layout/DataLocationSection";
 import { ExportSection } from "@/components/layout/ExportSection";
@@ -12,12 +12,10 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import * as sampleDb from "@/db/queries/sample";
 import { TOGGLE_SHORTCUT_LABEL } from "@/hooks/useSystemIntegration";
-import { nextProjectColors, projectColor } from "@/lib/colors";
+import { projectColor } from "@/lib/colors";
 import { attempt } from "@/lib/errors";
 import { goalOn, indexGoals, MAX_DAY_HOURS, minutesToInput, parseHoursInput } from "@/lib/goals";
-import { buildSampleData, SAMPLE_PROJECT_COUNT } from "@/lib/sampleData";
 import { dayKey } from "@/lib/time";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
@@ -41,7 +39,6 @@ export function SettingsDialog() {
           <div className="grid gap-7 border-t pt-6">
             <ExportSection />
             <ArchivedSection />
-            <SampleSection />
             <DataLocationSection open={open} />
           </div>
         </div>
@@ -180,62 +177,6 @@ function ArchivedSection() {
           if (toDelete) void deleteProject(toDelete.id);
           setToDelete(null);
         }}
-      />
-    </div>
-  );
-}
-
-function SampleSection() {
-  const projects = useAppStore((s) => s.projects);
-  const refresh = useAppStore((s) => s.refresh);
-  const hasSample = projects.some((p) => p.sample);
-  const [busy, setBusy] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
-
-  const create = async () => {
-    setBusy(true);
-    // Sample projects take the palette slots after the ones already in use.
-    const colors = nextProjectColors(projects, SAMPLE_PROJECT_COUNT);
-    const ok = await attempt("Không tạo được dữ liệu mẫu", () => sampleDb.insertSampleData(buildSampleData(Date.now(), colors)));
-    await refresh();
-    setBusy(false);
-    if (ok !== undefined) toast.success("Đã tạo dữ liệu mẫu");
-  };
-
-  const clear = async () => {
-    setBusy(true);
-    const ok = await attempt("Không xoá được dữ liệu mẫu", () => sampleDb.deleteSampleData());
-    useUiStore.getState().closeSidebar();
-    await refresh();
-    setBusy(false);
-    if (ok !== undefined) toast.success("Đã xoá dữ liệu mẫu");
-  };
-
-  return (
-    <div className="grid gap-2">
-      <div className="flex items-center gap-1.5">
-        <p className="text-sm font-medium">Dữ liệu mẫu</p>
-        <InfoTip side="top">
-          {SAMPLE_PROJECT_COUNT} project với khoảng 6 tháng thời gian làm việc, lý do, mục tiêu, todo, ghi chú, tài liệu và
-          nguyên nhân hằng ngày. Xoá được bất cứ lúc nào, project của bạn giữ nguyên.
-        </InfoTip>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="secondary" disabled={hasSample || busy} onClick={() => void create()}>
-          <Sparkles /> Tạo dữ liệu mẫu
-        </Button>
-        <Button size="sm" variant="ghost" disabled={!hasSample || busy} onClick={() => setConfirmClear(true)}>
-          <Trash2 /> Xoá dữ liệu mẫu
-        </Button>
-      </div>
-      <ConfirmDialog
-        open={confirmClear}
-        onOpenChange={setConfirmClear}
-        title="Xoá dữ liệu mẫu?"
-        description="Các project mẫu cùng thời gian, todo, ghi chú, tài liệu và báo cáo của chúng sẽ bị xoá. Dữ liệu của bạn giữ nguyên."
-        confirmLabel="Xoá dữ liệu mẫu"
-        destructive
-        onConfirm={() => void clear()}
       />
     </div>
   );

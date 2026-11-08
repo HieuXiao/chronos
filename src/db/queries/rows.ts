@@ -12,7 +12,6 @@ export interface ProjectRow {
   archived: number | null;
   start_date: string | null;
   end_date: string | null;
-  sample: number | null;
   purpose: string | null;
 }
 
@@ -53,7 +52,6 @@ export function toProject(row: ProjectRow): Project {
     archived: row.archived === 1,
     startDate: row.start_date ?? null,
     endDate: row.end_date ?? null,
-    sample: row.sample === 1,
     purpose: row.purpose ?? null,
   };
 }

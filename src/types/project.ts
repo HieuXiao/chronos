@@ -15,8 +15,6 @@ export interface Project {
   startDate: LocalDate | null;
   /** Optional deadline. */
   endDate: LocalDate | null;
-  /** Created by the sample-data generator. */
-  sample: boolean;
   /** Why this project matters ("Lý do của project"). */
   purpose: string | null;
 }
@@ -28,11 +26,10 @@ export interface NewProject {
   targetHours?: number | null;
   startDate?: LocalDate | null;
   endDate?: LocalDate | null;
-  sample?: boolean;
   purpose?: string | null;
 }
 
-export type ProjectPatch = Partial<Omit<Project, "id" | "createdAt" | "sample">>;
+export type ProjectPatch = Partial<Omit<Project, "id" | "createdAt">>;
 
 /** A related document: a web address or a local file / folder. */
 export interface ProjectLink {

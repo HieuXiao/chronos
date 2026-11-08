@@ -25,8 +25,8 @@ export async function createProject(input: NewProject): Promise<Project> {
   const db = await getDb();
   const rows = await db.select<ProjectRow[]>(
     `INSERT INTO projects
-       (name, color, icon, target_hours, created_at, archived, start_date, end_date, sample, purpose)
-     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9)
+       (name, color, icon, target_hours, created_at, archived, start_date, end_date, purpose)
+     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8)
      RETURNING *`,
     [
       input.name.trim(),
@@ -36,7 +36,6 @@ export async function createProject(input: NewProject): Promise<Project> {
       nowUtc(),
       input.startDate ?? dayKey(Date.now()),
       input.endDate ?? null,
-      input.sample ? 1 : 0,
       input.purpose ?? null,
     ],
   );
