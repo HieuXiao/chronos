@@ -158,11 +158,11 @@ export function minutesToInput(minutes: number): string {
   return Number.isInteger(h) ? String(h) : String(Math.round(h * 100) / 100);
 }
 
-/** Minutes → compact label: 90 → "1h30", 120 → "2h", 45 → "45m". */
+/** Minutes → label matching formatDuration: 90 → "1h 30m", 120 → "2h", 45 → "45m". */
 export function formatMinutes(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));
   const h = Math.floor(m / 60);
   const rest = m % 60;
   if (h === 0) return `${rest}m`;
-  return rest === 0 ? `${h}h` : `${h}h${String(rest).padStart(2, "0")}`;
+  return rest === 0 ? `${h}h` : `${h}h ${String(rest).padStart(2, "0")}m`;
 }

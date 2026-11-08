@@ -570,7 +570,7 @@ function GoalDetails({
 function Legend({ series, asLine, showGoals }: { series: ChartSeries[]; asLine: boolean; showGoals: boolean }) {
   if (series.length === 0 && !showGoals) return <div className="h-4" />;
   return (
-    <ul className="flex h-4 items-center gap-x-3 overflow-hidden text-[11px] text-muted-foreground">
+    <ul className="flex max-h-[34px] flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden text-[11px] text-muted-foreground">
       {showGoals && (
         <>
           <li className="flex shrink-0 items-center gap-1.5">

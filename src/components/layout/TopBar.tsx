@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/uiStore";
 import { ExportMenu } from "./ExportMenu";
+import { RunningIndicator } from "./RunningIndicator";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   cn(
@@ -31,7 +32,10 @@ export function TopBar() {
           Thống kê
         </NavLink>
       </nav>
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex min-w-0 items-center gap-1">
+        <div className="mr-2 min-w-0">
+          <RunningIndicator />
+        </div>
         <ExportMenu />
         <Button variant="ghost" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Cài đặt">
           <Settings />

@@ -11,7 +11,6 @@ import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
 import { ActivityChart } from "./ActivityChart";
 import { Heatmap } from "./Heatmap";
-import { ProjectProgressList } from "./ProjectProgressList";
 
 export const DASHBOARD_HEIGHT = 240;
 const COLLAPSED_HEIGHT = 44;
@@ -64,13 +63,10 @@ export function Dashboard() {
         <div className="flex h-full gap-5 p-4 pr-12">
           <TodayCard todaySec={todaySec} streak={streak} dayGoal={dayGoal} ev={todayEval} />
           {/* Heatmap gives way to the chart on narrow windows. */}
-          <div className="hidden shrink-0 xl:flex">
+          <div className="hidden shrink-0 lg:flex">
             <Heatmap daily={daily} nowMs={nowMs} />
           </div>
           <ActivityChart nowMs={nowMs} />
-          <div className="flex w-[clamp(240px,28%,400px)] shrink-0">
-            <ProjectProgressList nowMs={nowMs} />
-          </div>
         </div>
       )}
     </section>
@@ -102,7 +98,16 @@ function TodayCard({ todaySec, streak, dayGoal, ev }: TodayCardProps) {
                 style={{ width: `${percent}%` }}
               />
             </span>
-            <span className="text-xs text-muted-foreground tabular-nums">mục tiêu {formatMinutes(dayGoal)}</span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {percent >= 100 ? (
+                <span className="text-green-400">Đạt mục tiêu {formatMinutes(dayGoal)}</span>
+              ) : (
+                <>
+                  còn <span className="text-foreground">{formatMinutes(dayGoal - todaySec / 60)}</span> /{" "}
+                  {formatMinutes(dayGoal)}
+                </>
+              )}
+            </span>
           </div>
         )}
       </div>
