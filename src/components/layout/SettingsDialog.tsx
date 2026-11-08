@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { appConfigDir } from "@tauri-apps/api/path";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { ArchiveRestore, Trash2 } from "lucide-react";
+import { ArchiveRestore, Sparkles, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import * as sampleDb from "@/db/queries/sample";
+import { buildSampleData, SAMPLE_PROJECT_COUNT } from "@/lib/sampleData";
 import { ConfirmDialog } from "@/components/projects/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { TOGGLE_SHORTCUT_LABEL } from "@/hooks/useSystemIntegration";
-import { projectColor } from "@/lib/colors";
+import { nextProjectColors, projectColor } from "@/lib/colors";
 import { attempt } from "@/lib/errors";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
@@ -31,6 +34,31 @@ export function SettingsDialog() {
   const [dataDir, setDataDir] = useState("");
   const [toDelete, setToDelete] = useState<Project | null>(null);
   const archived = useMemo(() => projects.filter((p) => p.archived), [projects]);
+  const refresh = useAppStore((s) => s.refresh);
+  const hasSample = projects.some((p) => p.sample);
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [confirmClearSample, setConfirmClearSample] = useState(false);
+
+  const createSample = async () => {
+    setSampleBusy(true);
+    // Sample projects take the palette slots after the ones already in use.
+    const colors = nextProjectColors(projects, SAMPLE_PROJECT_COUNT);
+    const ok = await attempt("Không tạo được dữ liệu mẫu", () =>
+      sampleDb.insertSampleData(buildSampleData(Date.now(), colors)),
+    );
+    await refresh();
+    setSampleBusy(false);
+    if (ok !== undefined) toast.success("Đã tạo dữ liệu mẫu");
+  };
+
+  const clearSample = async () => {
+    setSampleBusy(true);
+    const ok = await attempt("Không xoá được dữ liệu mẫu", () => sampleDb.deleteSampleData());
+    useUiStore.getState().closeSidebar();
+    await refresh();
+    setSampleBusy(false);
+    if (ok !== undefined) toast.success("Đã xoá dữ liệu mẫu");
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +113,27 @@ export function SettingsDialog() {
             )}
 
             <div className="grid gap-2">
+              <p className="text-sm font-medium">Dữ liệu mẫu</p>
+              <p className="text-xs text-muted-foreground">
+                {SAMPLE_PROJECT_COUNT} project mẫu với khoảng 6 tháng session, todo và ghi chú để xem thử biểu đồ và dự
+                báo. Dữ liệu thật của bạn không bị ảnh hưởng.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" disabled={hasSample || sampleBusy} onClick={() => void createSample()}>
+                  <Sparkles /> Tạo dữ liệu mẫu
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!hasSample || sampleBusy}
+                  onClick={() => setConfirmClearSample(true)}
+                >
+                  <Trash2 /> Xoá dữ liệu mẫu
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
               <p className="text-sm font-medium">Project đã lưu trữ</p>
               {archived.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Không có project nào.</p>
@@ -114,6 +163,16 @@ export function SettingsDialog() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmClearSample}
+        onOpenChange={setConfirmClearSample}
+        title="Xoá dữ liệu mẫu?"
+        description="Các project mẫu cùng session, todo và ghi chú của chúng sẽ bị xoá. Project của bạn giữ nguyên."
+        confirmLabel="Xoá dữ liệu mẫu"
+        destructive
+        onConfirm={() => void clearSample()}
+      />
 
       <ConfirmDialog
         open={toDelete !== null}

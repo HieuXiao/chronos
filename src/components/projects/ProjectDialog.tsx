@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DEFAULT_PROJECT_COLOR, PROJECT_COLORS } from "@/lib/colors";
+import { DEFAULT_PROJECT_COLOR, PROJECT_COLORS, nextProjectColor } from "@/lib/colors";
+import { dayKey } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
@@ -27,6 +28,8 @@ export function ProjectDialog() {
   const [target, setTarget] = useState("");
   const [icon, setIcon] = useState("");
   const [color, setColor] = useState<string>(DEFAULT_PROJECT_COLOR);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -34,13 +37,17 @@ export function ProjectDialog() {
     setName(editing?.name ?? "");
     setTarget(editing?.targetHours != null ? String(editing.targetHours) : "");
     setIcon(editing?.icon ?? "");
-    setColor(editing?.color ?? DEFAULT_PROJECT_COLOR);
+    setColor(editing?.color ?? nextProjectColor(useAppStore.getState().projects));
+    setStartDate(editing ? (editing.startDate ?? "") : dayKey(Date.now()));
+    setEndDate(editing?.endDate ?? "");
     setSubmitting(false);
   }, [state, editing]);
 
   const targetNumber = target.trim() === "" ? null : Number(target.replace(",", "."));
   const targetInvalid = targetNumber !== null && (!Number.isFinite(targetNumber) || targetNumber <= 0);
-  const canSubmit = name.trim().length > 0 && !targetInvalid && !submitting;
+  // 'YYYY-MM-DD' strings compare correctly as text.
+  const datesInvalid = startDate !== "" && endDate !== "" && endDate < startDate;
+  const canSubmit = name.trim().length > 0 && startDate !== "" && !targetInvalid && !datesInvalid && !submitting;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -51,6 +58,8 @@ export function ProjectDialog() {
       targetHours: targetNumber,
       icon: icon.trim() || null,
       color,
+      startDate,
+      endDate: endDate || null,
     };
     const ok = editing
       ? await updateProject(editing.id, values)
@@ -66,7 +75,7 @@ export function ProjectDialog() {
           <DialogHeader>
             <DialogTitle>{editing ? "Sửa project" : "Thêm project"}</DialogTitle>
             <DialogDescription>
-              Đặt số giờ mục tiêu để Chronos dự báo ngày hoàn thành.
+              Đặt số giờ mục tiêu và hạn hoàn thành để Chronos dự báo bạn có kịp không.
             </DialogDescription>
           </DialogHeader>
 
@@ -105,6 +114,33 @@ export function ProjectDialog() {
                 className="text-center"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="project-start">Ngày bắt đầu</Label>
+              <Input
+                id="project-start"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="project-end">Hạn hoàn thành (tuỳ chọn)</Label>
+              <Input
+                id="project-end"
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                aria-invalid={datesInvalid || undefined}
+              />
+            </div>
+            {datesInvalid && (
+              <p className="col-span-2 text-xs text-destructive">Hạn hoàn thành phải sau ngày bắt đầu.</p>
+            )}
           </div>
 
           <div className="grid gap-2">

@@ -1,7 +1,9 @@
+import { AlertTriangle } from "lucide-react";
 import { useActiveProjects, useProjectTotals } from "@/hooks/useStats";
+import { localDateMs } from "@/lib/chart";
 import { projectColor } from "@/lib/colors";
 import { forecastProject, type Forecast } from "@/lib/forecast";
-import { formatDate, formatHours } from "@/lib/time";
+import { formatDate, formatHours, localDayDiff } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/store/uiStore";
 
@@ -11,7 +13,7 @@ export function ProjectProgressList({ nowMs }: { nowMs: number }) {
   const openSidebar = useUiStore((s) => s.openSidebar);
 
   return (
-    <div className="flex min-h-0 flex-col gap-2">
+    <div className="flex min-h-0 w-full flex-col gap-2">
       <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Tiến độ</p>
 
       {projects.length === 0 ? (
@@ -31,7 +33,7 @@ export function ProjectProgressList({ nowMs }: { nowMs: number }) {
                 <button
                   type="button"
                   onClick={() => openSidebar(project.id)}
-                  className="grid w-full grid-cols-[minmax(80px,160px)_minmax(60px,1fr)_auto] items-center gap-x-4 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent/50"
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent/50"
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
@@ -40,7 +42,9 @@ export function ProjectProgressList({ nowMs }: { nowMs: number }) {
                     </span>
                   </span>
 
-                  <span className="flex items-center gap-3">
+                  <ForecastLabel forecast={forecast} />
+
+                  <span className="col-span-2 flex items-center gap-3">
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                       <span
                         className="block h-full rounded-full transition-[width]"
@@ -54,7 +58,12 @@ export function ProjectProgressList({ nowMs }: { nowMs: number }) {
                     </span>
                   </span>
 
-                  <ForecastLabel forecast={forecast} />
+                  <DeadlineLine
+                    endDate={project.endDate}
+                    forecast={forecast}
+                    remainingHours={target ? target - doneHours : null}
+                    nowMs={nowMs}
+                  />
                 </button>
               </li>
             );
@@ -91,6 +100,40 @@ function ForecastLabel({ forecast }: { forecast: Forecast }) {
         </span>
       );
   }
+}
+
+interface DeadlineLineProps {
+  endDate: string | null;
+  forecast: Forecast;
+  remainingHours: number | null;
+  nowMs: number;
+}
+
+/** Deadline vs. forecast: on track, late by N days, or overdue. */
+function DeadlineLine({ endDate, forecast, remainingHours, nowMs }: DeadlineLineProps) {
+  if (!endDate || forecast.kind === "reached" || forecast.kind === "no-target") return null;
+  const deadlineMs = localDateMs(endDate);
+  const daysToDeadline = localDayDiff(nowMs, deadlineMs) + 1; // today included
+  const needed = remainingHours !== null && daysToDeadline > 0 ? remainingHours / daysToDeadline : null;
+
+  let late: string | null = null;
+  if (daysToDeadline <= 0) late = "đã quá hạn";
+  else if (forecast.kind === "eta" && forecast.etaMs > deadlineMs) {
+    late = `dự kiến trễ ${localDayDiff(deadlineMs, forecast.etaMs)} ngày`;
+  }
+
+  return (
+    <span className="col-span-2 flex items-center gap-1.5 text-[11px] text-muted-foreground tabular-nums">
+      {late && <AlertTriangle className="size-3 shrink-0 text-amber-400" aria-hidden="true" />}
+      <span>Hạn {formatDate(deadlineMs)}</span>
+      {late ? (
+        <span>· {late}</span>
+      ) : forecast.kind === "eta" ? (
+        <span>· kịp hạn</span>
+      ) : null}
+      {needed !== null && <span className="ml-auto">cần {formatHours(needed)}/ngày</span>}
+    </span>
+  );
 }
 
 function Velocity({ value }: { value: number }) {

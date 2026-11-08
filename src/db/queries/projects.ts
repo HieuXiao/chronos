@@ -1,5 +1,5 @@
 import { getDb } from "@/db/client";
-import { nowUtc } from "@/lib/time";
+import { dayKey, nowUtc } from "@/lib/time";
 import type { Id, NewProject, Project, ProjectPatch } from "@/types";
 import { expectRow, first, toProject, type ProjectRow } from "./rows";
 
@@ -24,8 +24,9 @@ export async function getProject(id: Id): Promise<Project | null> {
 export async function createProject(input: NewProject): Promise<Project> {
   const db = await getDb();
   const rows = await db.select<ProjectRow[]>(
-    `INSERT INTO projects (name, color, icon, target_hours, status, created_at, archived)
-     VALUES ($1, $2, $3, $4, $5, $6, 0)
+    `INSERT INTO projects
+       (name, color, icon, target_hours, status, created_at, archived, start_date, end_date, sample)
+     VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9)
      RETURNING *`,
     [
       input.name.trim(),
@@ -34,6 +35,9 @@ export async function createProject(input: NewProject): Promise<Project> {
       input.targetHours ?? null,
       input.status ?? "active",
       nowUtc(),
+      input.startDate ?? dayKey(Date.now()),
+      input.endDate ?? null,
+      input.sample ? 1 : 0,
     ],
   );
   return toProject(expectRow(rows, "project vừa tạo"));
@@ -46,6 +50,8 @@ const PATCH_COLUMNS = {
   targetHours: "target_hours",
   status: "status",
   archived: "archived",
+  startDate: "start_date",
+  endDate: "end_date",
 } as const satisfies Record<keyof ProjectPatch, string>;
 
 export async function updateProject(id: Id, patch: ProjectPatch): Promise<Project> {

@@ -7,6 +7,7 @@ import { dayKey, formatDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
+import { ActivityChart } from "./ActivityChart";
 import { Heatmap } from "./Heatmap";
 import { ProjectProgressList } from "./ProjectProgressList";
 
@@ -49,10 +50,16 @@ export function Dashboard() {
           <StreakLabel streak={streak} />
         </div>
       ) : (
-        <div className="grid h-full grid-cols-[170px_auto_minmax(0,1fr)] gap-6 p-4 pr-12">
+        <div className="flex h-full gap-5 p-4 pr-12">
           <TodayCard todaySec={todaySec} streak={streak} />
-          <Heatmap daily={daily} nowMs={nowMs} />
-          <ProjectProgressList nowMs={nowMs} />
+          {/* Heatmap gives way to the chart on narrow windows. */}
+          <div className="hidden shrink-0 xl:flex">
+            <Heatmap daily={daily} nowMs={nowMs} />
+          </div>
+          <ActivityChart nowMs={nowMs} />
+          <div className="flex w-[clamp(240px,28%,400px)] shrink-0">
+            <ProjectProgressList nowMs={nowMs} />
+          </div>
         </div>
       )}
     </section>
@@ -61,7 +68,7 @@ export function Dashboard() {
 
 function TodayCard({ todaySec, streak }: { todaySec: number; streak: number }) {
   return (
-    <div className="flex flex-col justify-between rounded-xl border bg-card p-4">
+    <div className="flex w-[150px] shrink-0 flex-col justify-between rounded-xl border bg-card p-4">
       <div>
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Hôm nay</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums">{formatDuration(todaySec)}</p>

@@ -11,6 +11,9 @@ export interface ProjectRow {
   status: string | null;
   created_at: string;
   archived: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  sample: number | null;
 }
 
 export interface SessionRow {
@@ -49,6 +52,9 @@ export function toProject(row: ProjectRow): Project {
     status: (row.status ?? "active") as ProjectStatus,
     createdAt: row.created_at,
     archived: row.archived === 1,
+    startDate: row.start_date ?? null,
+    endDate: row.end_date ?? null,
+    sample: row.sample === 1,
   };
 }
 
