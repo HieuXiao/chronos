@@ -17,6 +17,8 @@ interface Recipe {
   /** Last day with sessions (days ago); 0 = up to today. */
   stopDaysAgo: number;
   meanHoursPerDay: number;
+  /** Daily minimum in minutes (0 = none). */
+  dailyMinutes: number;
   /** Probability of working on a weekday (weekends are lighter). */
   activeRate: number;
   todos: [text: string, done: boolean][];
@@ -33,6 +35,7 @@ const RECIPES: Recipe[] = [
     deadlineInDays: 150,
     stopDaysAgo: 0,
     meanHoursPerDay: 1.3,
+    dailyMinutes: 60,
     activeRate: 0.8,
     todos: [
       ["Ôn 50 kanji bài 12", true],
@@ -52,6 +55,7 @@ const RECIPES: Recipe[] = [
     deadlineInDays: 25,
     stopDaysAgo: 0,
     meanHoursPerDay: 1.6,
+    dailyMinutes: 90,
     activeRate: 0.75,
     todos: [
       ["Chốt đề cương với thầy hướng dẫn", true],
@@ -72,6 +76,7 @@ const RECIPES: Recipe[] = [
     deadlineInDays: -30,
     stopDaysAgo: 40,
     meanHoursPerDay: 0.65,
+    dailyMinutes: 0,
     activeRate: 0.6,
     todos: [
       ["Atomic Habits", true],
@@ -89,6 +94,7 @@ const RECIPES: Recipe[] = [
     deadlineInDays: null,
     stopDaysAgo: 0,
     meanHoursPerDay: 1,
+    dailyMinutes: 45,
     activeRate: 0.7,
     todos: [
       ["Đọc xong The Book chương 1–10", true],
@@ -107,6 +113,7 @@ const RECIPES: Recipe[] = [
     deadlineInDays: 60,
     stopDaysAgo: 0,
     meanHoursPerDay: 0.6,
+    dailyMinutes: 30,
     activeRate: 0.9,
     todos: [
       ["Mua giày chạy", true],
@@ -115,6 +122,26 @@ const RECIPES: Recipe[] = [
     note: "Bắt đầu nhẹ, tăng 10% quãng đường mỗi tuần.",
   },
 ];
+
+/** Preset labels (created by migration 005) with how often each is picked. */
+const REASON_WEIGHTS: [label: string, weight: number][] = [
+  ["Lướt mạng xã hội", 30],
+  ["Ngủ dậy muộn", 20],
+  ["Mất tập trung", 16],
+  ["Việc đột xuất", 14],
+  ["Mệt / ốm", 9],
+  ["Đi chơi", 6],
+  ["Ước lượng sai thời gian", 5],
+];
+const REASON_NOTES = [
+  "Xem YouTube quá lâu buổi tối",
+  "Thức khuya hôm trước",
+  "Phải đi làm thêm ca chiều",
+  "Họp nhóm kéo dài",
+  "Đau đầu cả buổi chiều",
+  "Sinh nhật bạn",
+];
+const REASON_DAYS = 90;
 
 const GENERIC_NOTES = ["Ôn lại phần cũ", "Làm bài tập", "Tập trung sâu", "Sửa lỗi", "Ghi chú tổng hợp"];
 
@@ -143,11 +170,36 @@ export interface SampleNote {
   content: string;
 }
 
+export interface SampleGoal {
+  projectKey: string;
+  minutes: number;
+  effectiveFrom: string;
+}
+
+export interface SampleReason {
+  projectKey: string;
+  day: string;
+  labels: string[];
+  note: string | null;
+}
+
 export interface SampleData {
   projects: SampleProject[];
   sessions: SampleSession[];
   todos: SampleTodo[];
   notes: SampleNote[];
+  goals: SampleGoal[];
+  reasons: SampleReason[];
+}
+
+function pickWeighted(rnd: () => number): string {
+  const total = REASON_WEIGHTS.reduce((s, [, w]) => s + w, 0);
+  let x = rnd() * total;
+  for (const [label, w] of REASON_WEIGHTS) {
+    x -= w;
+    if (x < 0) return label;
+  }
+  return REASON_WEIGHTS[0]![0];
 }
 
 function mulberry32(seed: number) {
@@ -177,7 +229,7 @@ function dateKey(d: Date): string {
 /** @param colors one palette colour per recipe, in order */
 export function buildSampleData(nowMs: number, colors: string[], seed = 20261108): SampleData {
   const rnd = mulberry32(seed);
-  const data: SampleData = { projects: [], sessions: [], todos: [], notes: [] };
+  const data: SampleData = { projects: [], sessions: [], todos: [], notes: [], goals: [], reasons: [] };
 
   RECIPES.forEach((r, idx) => {
     const start = localDay(nowMs, -r.startDaysAgo);
@@ -192,6 +244,7 @@ export function buildSampleData(nowMs: number, colors: string[], seed = 20261108
       sample: true,
     });
 
+    const minutesByDay = new Map<string, number>();
     for (let ago = r.startDaysAgo; ago >= r.stopDaysAgo; ago--) {
       const day = localDay(nowMs, -ago);
       const weekend = day.getDay() === 0 || day.getDay() === 6;
@@ -220,7 +273,30 @@ export function buildSampleData(nowMs: number, colors: string[], seed = 20261108
                 : null,
           source: rnd() < 0.1 ? "manual" : "timer",
         });
+        const key = dateKey(day);
+        minutesByDay.set(key, (minutesByDay.get(key) ?? 0) + (endMs - cursor) / 60_000);
         cursor = endMs + (60 + Math.floor(rnd() * 120)) * 60_000;
+      }
+    }
+
+    if (r.dailyMinutes > 0) {
+      data.goals.push({ projectKey: r.key, minutes: r.dailyMinutes, effectiveFrom: dateKey(start) });
+      // Reasons for most missed days in the last few months (never today: it is not over yet).
+      const deadlineAgo = r.deadlineInDays === null ? -Infinity : -r.deadlineInDays;
+      const firstAgo = Math.min(r.startDaysAgo, REASON_DAYS);
+      for (let ago = firstAgo; ago >= 1; ago--) {
+        if (ago < deadlineAgo) break;
+        const key = dateKey(localDay(nowMs, -ago));
+        if ((minutesByDay.get(key) ?? 0) >= r.dailyMinutes) continue;
+        if (rnd() > 0.75) continue;
+        const labels = new Set([pickWeighted(rnd)]);
+        if (rnd() < 0.3) labels.add(pickWeighted(rnd));
+        data.reasons.push({
+          projectKey: r.key,
+          day: key,
+          labels: [...labels],
+          note: rnd() < 0.25 ? REASON_NOTES[Math.floor(rnd() * REASON_NOTES.length)]! : null,
+        });
       }
     }
 

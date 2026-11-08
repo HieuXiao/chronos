@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +13,13 @@ import {
   type ChartPeriod,
   type ChartSeries,
 } from "@/lib/chart";
-import { formatDuration, formatHours } from "@/lib/time";
+import { useGoals, type GoalData } from "@/hooks/useGoals";
+import { formatMinutes, type DayEvaluation } from "@/lib/goals";
+import { dayKey, formatDuration, formatHours } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
+import { useUiStore } from "@/store/uiStore";
+import type { MissLabel, Project } from "@/types";
 
 const PERIODS: { value: ChartPeriod; label: string }[] = [
   { value: "week", label: "Tuần" },
@@ -27,6 +32,8 @@ const MARGIN = { top: 6, right: 6, bottom: 18, left: 30 };
 const MAX_BAR = 24;
 const SEGMENT_GAP = 2;
 const RADIUS = 4;
+/** Status "warning" (amber-400); always paired with text in tooltip / legend. */
+const WARN_COLOR = "#fbbf24";
 
 function readPeriod(): ChartPeriod {
   try {
@@ -67,6 +74,9 @@ function topRoundedBar(x: number, y: number, w: number, h: number, r: number): s
 export function ActivityChart({ nowMs }: { nowMs: number }) {
   const spans = useAppStore((s) => s.spans);
   const projects = useAppStore((s) => s.projects);
+  const labels = useAppStore((s) => s.labels);
+  const setReviewDay = useUiStore((s) => s.setReviewDay);
+  const goals = useGoals(nowMs);
 
   const [period, setPeriodState] = useState<ChartPeriod>(readPeriod);
   const [anchorMs, setAnchorMs] = useState(() => Date.now());
@@ -88,10 +98,17 @@ export function ActivityChart({ nowMs }: { nowMs: number }) {
   const series = useMemo(() => buildSeries(spans, projects, buckets, nowMs), [spans, projects, buckets, nowMs]);
   const totals = buckets.map((_, i) => series.reduce((sum, s) => sum + (s.values[i] ?? 0), 0));
   const asLine = period === "year";
+  // Goals are per day, so only the week / month views show them.
+  const evals = useMemo(
+    () => (asLine ? [] : buckets.map((b) => goals.evaluate(dayKey(b.startMs)))),
+    [asLine, buckets, goals],
+  );
+  const dayTargets = evals.map((ev) => (ev.items.find((i) => i.projectId === null)?.targetMin ?? 0) / 60);
+  const hasGoals = evals.some((ev) => ev.items.length > 0);
 
   const maxValue = asLine
     ? Math.max(0, ...series.flatMap((s) => s.values))
-    : Math.max(0, ...totals);
+    : Math.max(0, ...totals, ...dayTargets);
   const { max, step } = niceScale(maxValue);
 
   const plotW = Math.max(0, size.width - MARGIN.left - MARGIN.right);
@@ -209,7 +226,10 @@ export function ActivityChart({ nowMs }: { nowMs: number }) {
             {asLine ? (
               <LineMarks series={series} buckets={buckets} cx={cx} y={y} hover={hover} />
             ) : (
-              <BarMarks series={series} buckets={buckets} band={band} cx={cx} y={y} />
+              <>
+                <BarMarks series={series} buckets={buckets} band={band} cx={cx} y={y} />
+                <GoalMarks evals={evals} goals={goals} targets={dayTargets} totals={totals} band={band} cx={cx} y={y} />
+              </>
             )}
 
             {/* X labels */}
@@ -239,8 +259,12 @@ export function ActivityChart({ nowMs }: { nowMs: number }) {
                 width={band}
                 height={plotH + MARGIN.bottom}
                 fill="transparent"
+                className={asLine || b.future ? undefined : "cursor-pointer"}
                 onPointerEnter={() => setHover(i)}
                 onPointerMove={() => setHover(i)}
+                onClick={() => {
+                  if (!asLine && !b.future) setReviewDay(dayKey(b.startMs));
+                }}
               />
             ))}
           </svg>
@@ -252,20 +276,25 @@ export function ActivityChart({ nowMs }: { nowMs: number }) {
           </p>
         )}
 
-        {hover !== null && buckets[hover] && series.length > 0 && (
+        {hover !== null && buckets[hover] && (series.length > 0 || (evals[hover]?.items.length ?? 0) > 0) && (
           <ChartTooltip
             bucket={buckets[hover]}
             series={series}
             index={hover}
             total={totals[hover] ?? 0}
             asLine={asLine}
+            ev={evals[hover] ?? null}
+            goals={goals}
+            projects={projects}
+            labels={labels}
             x={cx(hover)}
             alignRight={cx(hover) > size.width / 2}
+            anchor={plotRef.current?.getBoundingClientRect() ?? null}
           />
         )}
       </div>
 
-      <Legend series={series} asLine={asLine} />
+      <Legend series={series} asLine={asLine} showGoals={hasGoals} />
       <DataTable buckets={buckets} series={series} />
     </div>
   );
@@ -305,6 +334,61 @@ function BarMarks({ series, buckets, band, cx, y }: MarkProps & { band: number }
                 <rect key={seg.key} x={x} y={yTop + SEGMENT_GAP} width={barW} height={drawH} fill={seg.color} />
               );
             })}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+interface GoalMarksProps {
+  evals: DayEvaluation[];
+  goals: GoalData;
+  /** Whole-day goal in hours per bucket (0 = none). */
+  targets: number[];
+  totals: number[];
+  band: number;
+  cx: (i: number) => number;
+  y: (v: number) => number;
+}
+
+/**
+ * Dashed tick at each day's whole-day goal, and a marker over days that missed
+ * a goal: filled once a reason is recorded, hollow while it still needs one.
+ */
+function GoalMarks({ evals, goals, targets, totals, band, cx, y }: GoalMarksProps) {
+  const tickW = Math.max(6, Math.min(MAX_BAR + 8, band * 0.85));
+  return (
+    <g>
+      {evals.map((ev, i) => {
+        const target = targets[i] ?? 0;
+        const top = Math.min(y(totals[i] ?? 0), target > 0 ? y(target) : Infinity);
+        const missed = ev.final && ev.missed.length > 0;
+        const pending = missed && goals.unexplained(ev) > 0;
+        return (
+          <g key={ev.day}>
+            {target > 0 && (
+              <line
+                x1={cx(i) - tickW / 2}
+                x2={cx(i) + tickW / 2}
+                y1={y(target)}
+                y2={y(target)}
+                stroke="var(--foreground)"
+                strokeOpacity={0.7}
+                strokeWidth={1.5}
+                strokeDasharray="3 2"
+              />
+            )}
+            {missed && (
+              <circle
+                cx={cx(i)}
+                cy={Math.max(MARGIN.top - 2, top - 7)}
+                r={3}
+                fill={pending ? "var(--background)" : WARN_COLOR}
+                stroke={WARN_COLOR}
+                strokeWidth={1.5}
+              />
+            )}
           </g>
         );
       })}
@@ -363,17 +447,41 @@ interface TooltipProps {
   index: number;
   total: number;
   asLine: boolean;
+  ev: DayEvaluation | null;
+  goals: GoalData;
+  projects: Project[];
+  labels: MissLabel[];
   x: number;
   alignRight: boolean;
+  /** Plot box in the viewport; the tooltip is portalled so the dashboard cannot clip it. */
+  anchor: DOMRect | null;
 }
 
-function ChartTooltip({ bucket, series, index, total, asLine, x, alignRight }: TooltipProps) {
+function ChartTooltip({
+  bucket,
+  series,
+  index,
+  total,
+  asLine,
+  ev,
+  goals,
+  projects,
+  labels,
+  x,
+  alignRight,
+  anchor,
+}: TooltipProps) {
   const rows = series.filter((s) => (s.values[index] ?? 0) > 0);
-  return (
+  if (!anchor) return null;
+  const left = anchor.left + x;
+  return createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none absolute top-0 z-30 min-w-40 rounded-md border bg-popover px-2.5 py-2 text-xs text-popover-foreground shadow-lg"
-      style={alignRight ? { right: `calc(100% - ${x - 12}px)` } : { left: x + 12 }}
+      className="pointer-events-none fixed z-50 max-w-80 min-w-40 rounded-md border bg-popover px-2.5 py-2 text-xs text-popover-foreground shadow-lg"
+      style={{
+        top: anchor.top,
+        ...(alignRight ? { right: window.innerWidth - left + 12 } : { left: left + 12 }),
+      }}
     >
       <p className="mb-1 font-medium">{bucket.title}</p>
       {rows.length === 0 ? (
@@ -394,14 +502,89 @@ function ChartTooltip({ bucket, series, index, total, asLine, x, alignRight }: T
           Tổng <span className="font-semibold text-foreground tabular-nums">{formatDuration(total * 3600)}</span>
         </p>
       )}
+      {ev && ev.items.length > 0 && !bucket.future && (
+        <GoalDetails ev={ev} goals={goals} projects={projects} labels={labels} />
+      )}
+    </div>,
+    document.body,
+  );
+}
+
+function GoalDetails({
+  ev,
+  goals,
+  projects,
+  labels,
+}: {
+  ev: DayEvaluation;
+  goals: GoalData;
+  projects: Project[];
+  labels: MissLabel[];
+}) {
+  const byId = new Map(projects.map((p) => [p.id, p]));
+  const labelName = new Map(labels.map((l) => [l.id, l.name]));
+  const pending = ev.final ? goals.unexplained(ev) : 0;
+  return (
+    <div className="mt-1.5 grid gap-1 border-t pt-1.5">
+      <p className="text-muted-foreground">
+        Chỉ tiêu {ev.items.length - ev.missed.length}/{ev.items.length}
+      </p>
+      <ul className="grid gap-1">
+        {ev.items.map((item) => {
+          const name = item.projectId === null ? "Tổng ngày" : (byId.get(item.projectId)?.name ?? "?");
+          const reason = goals.reasonFor(ev.day, item.projectId);
+          return (
+            <li key={item.projectId ?? 0} className="grid gap-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className={cn("w-3 shrink-0 text-center", item.met ? "text-green-400" : "text-amber-400")}>
+                  {item.met ? "✓" : "!"}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{name}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {formatDuration(item.actualSec)} / {formatMinutes(item.targetMin)}
+                </span>
+              </span>
+              {reason && !item.met && (
+                <span className="ml-4.5 grid gap-0.5">
+                  {reason.labelIds.length > 0 && (
+                    <span className="flex flex-wrap gap-1">
+                      {reason.labelIds.map((id) => (
+                        <span key={id} className="rounded-full bg-muted px-1.5 py-px text-[10px]">
+                          {labelName.get(id) ?? "?"}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  {reason.note && <span className="text-muted-foreground italic">“{reason.note}”</span>}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {pending > 0 && <p className="text-amber-400">Bấm vào cột để ghi lý do chưa đạt</p>}
     </div>
   );
 }
 
-function Legend({ series, asLine }: { series: ChartSeries[]; asLine: boolean }) {
-  if (series.length === 0) return <div className="h-4" />;
+function Legend({ series, asLine, showGoals }: { series: ChartSeries[]; asLine: boolean; showGoals: boolean }) {
+  if (series.length === 0 && !showGoals) return <div className="h-4" />;
   return (
     <ul className="flex h-4 items-center gap-x-3 overflow-hidden text-[11px] text-muted-foreground">
+      {showGoals && (
+        <>
+          <li className="flex shrink-0 items-center gap-1.5">
+            <svg width="12" height="4" aria-hidden="true">
+              <line x1="0" x2="12" y1="2" y2="2" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 2" />
+            </svg>
+            Mục tiêu
+          </li>
+          <li className="flex shrink-0 items-center gap-1.5">
+            <span className="size-2 rounded-full border-[1.5px]" style={{ borderColor: WARN_COLOR }} />
+            Chưa đạt
+          </li>
+        </>
+      )}
       {series.map((s) => (
         <li key={s.key} className="flex shrink-0 items-center gap-1.5">
           <span

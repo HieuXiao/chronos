@@ -5,6 +5,7 @@ import { ArchiveRestore, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import * as sampleDb from "@/db/queries/sample";
 import { buildSampleData, SAMPLE_PROJECT_COUNT } from "@/lib/sampleData";
+import { DailyGoalsSection } from "@/components/goals/DailyGoalsSection";
 import { ConfirmDialog } from "@/components/projects/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,7 +78,7 @@ export function SettingsDialog() {
   return (
     <>
       <Dialog open={open} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Cài đặt</DialogTitle>
             <DialogDescription>Chronos chạy hoàn toàn offline; dữ liệu chỉ nằm trên máy này.</DialogDescription>
@@ -105,6 +106,8 @@ export function SettingsDialog() {
               <p className="text-xs text-muted-foreground">Đóng cửa sổ sẽ thu xuống khay; chọn “Thoát” ở khay để tắt hẳn.</p>
             </div>
 
+            <DailyGoalsSection open={open} />
+
             {dataDir && (
               <div className="grid gap-1">
                 <p className="text-sm">Vị trí dữ liệu</p>
@@ -115,7 +118,7 @@ export function SettingsDialog() {
             <div className="grid gap-2">
               <p className="text-sm font-medium">Dữ liệu mẫu</p>
               <p className="text-xs text-muted-foreground">
-                {SAMPLE_PROJECT_COUNT} project mẫu với khoảng 6 tháng session, todo và ghi chú để xem thử biểu đồ và dự
+                {SAMPLE_PROJECT_COUNT} project mẫu với khoảng 6 tháng session, todo, ghi chú, chỉ tiêu ngày và lý do không đạt để xem thử biểu đồ và dự
                 báo. Dữ liệu thật của bạn không bị ảnh hưởng.
               </p>
               <div className="flex gap-2">

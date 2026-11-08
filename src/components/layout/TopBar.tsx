@@ -27,6 +27,9 @@ export function TopBar() {
         <NavLink to="/history" className={navClass}>
           Lịch sử
         </NavLink>
+        <NavLink to="/insights" className={navClass}>
+          Thống kê
+        </NavLink>
       </nav>
       <div className="ml-auto flex items-center gap-1">
         <ExportMenu />

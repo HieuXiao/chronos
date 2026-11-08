@@ -3,3 +3,4 @@ export type * from "./project";
 export type * from "./session";
 export type * from "./todo";
 export type * from "./note";
+export type * from "./goal";

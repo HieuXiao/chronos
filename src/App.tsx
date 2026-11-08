@@ -1,15 +1,18 @@
 import { useEffect } from "react";
 import { HashRouter, Route, Routes } from "react-router";
+import { DayReviewDialog } from "@/components/goals/DayReviewDialog";
 import { TopBar } from "@/components/layout/TopBar";
 import { SettingsDialog } from "@/components/layout/SettingsDialog";
 import { ProjectDialog } from "@/components/projects/ProjectDialog";
 import { IdleDialog } from "@/components/timers/IdleDialog";
 import { StopNoteDialog } from "@/components/timers/StopNoteDialog";
 import { Toaster } from "@/components/ui/sonner";
+import { useReviewReminder } from "@/hooks/useReviewReminder";
 import { useIdleWatcher } from "@/hooks/useIdleWatcher";
 import { useSystemIntegration } from "@/hooks/useSystemIntegration";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { HomePage } from "@/pages/HomePage";
+import { InsightsPage } from "@/pages/InsightsPage";
 import { useAppStore } from "@/store/appStore";
 
 export default function App() {
@@ -39,6 +42,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/history" element={<HistoryPage />} />
+              <Route path="/insights" element={<InsightsPage />} />
             </Routes>
           )}
         </main>
@@ -48,6 +52,7 @@ export default function App() {
       <StopNoteDialog />
       <IdleDialog />
       <SettingsDialog />
+      {dbStatus === "ready" && <DayReviewDialog />}
       <Toaster />
     </HashRouter>
   );
@@ -58,6 +63,7 @@ function BackgroundServices() {
   useSystemIntegration();
   useIdleWatcher();
   useDayRollover();
+  useReviewReminder();
   return null;
 }
 

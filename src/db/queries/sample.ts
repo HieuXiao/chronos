@@ -2,6 +2,7 @@ import { getDb } from "@/db/client";
 import { diffSec, nowUtc } from "@/lib/time";
 import type { SampleData } from "@/lib/sampleData";
 import type { Id } from "@/types";
+import { createLabel, insertReasonLabels } from "./goals";
 import { createProject } from "./projects";
 
 const CHUNK = 100;
@@ -52,9 +53,30 @@ export async function insertSampleData(data: SampleData): Promise<void> {
       nowUtc(),
     ]);
   }
+
+  for (const g of data.goals) {
+    await db.execute("INSERT INTO daily_goals (project_id, minutes, effective_from) VALUES ($1, $2, $3)", [
+      idOf(g.projectKey),
+      g.minutes,
+      g.effectiveFrom,
+    ]);
+  }
+
+  const labelIds = new Map<string, Id>();
+  for (const name of new Set(data.reasons.flatMap((r) => r.labels))) {
+    labelIds.set(name, (await createLabel(name)).id);
+  }
+  for (const r of data.reasons) {
+    const rows = await db.select<{ id: number }[]>(
+      "INSERT INTO miss_reasons (day, project_id, note, updated_at) VALUES ($1, $2, $3, $4) RETURNING id",
+      [r.day, idOf(r.projectKey), r.note, nowUtc()],
+    );
+    const id = rows[0]?.id;
+    if (id !== undefined) await insertReasonLabels(id, r.labels.flatMap((l) => labelIds.get(l) ?? []));
+  }
 }
 
-/** Removes every sample project with its sessions, todos and notes (cascade). */
+/** Removes every sample project with its sessions, todos, notes, goals and reasons (cascade). */
 export async function deleteSampleData(): Promise<void> {
   const db = await getDb();
   await db.execute("DELETE FROM projects WHERE sample = 1");

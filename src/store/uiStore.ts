@@ -23,6 +23,8 @@ interface UiState {
   idlePrompt: IdlePrompt | null;
   projectDialog: ProjectDialogState;
   settingsOpen: boolean;
+  /** Day (YYYY-MM-DD) whose review dialog is open. */
+  reviewDay: string | null;
 
   openSidebar: (projectId: Id) => void;
   closeSidebar: () => void;
@@ -33,6 +35,7 @@ interface UiState {
   setIdlePrompt: (prompt: IdlePrompt | null) => void;
   setProjectDialog: (state: ProjectDialogState) => void;
   setSettingsOpen: (open: boolean) => void;
+  setReviewDay: (day: string | null) => void;
 }
 
 const COLLAPSED_KEY = "chronos.dashboardCollapsed";
@@ -52,6 +55,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   idlePrompt: null,
   projectDialog: null,
   settingsOpen: false,
+  reviewDay: null,
 
   openSidebar: (projectId) => set({ sidebarProjectId: projectId }),
   closeSidebar: () => set({ sidebarProjectId: null }),
@@ -72,4 +76,5 @@ export const useUiStore = create<UiState>()((set, get) => ({
   setIdlePrompt: (prompt) => set({ idlePrompt: prompt }),
   setProjectDialog: (state) => set({ projectDialog: state }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setReviewDay: (day) => set({ reviewDay: day }),
 }));

@@ -1,7 +1,9 @@
 import { useMemo } from "react";
-import { ChevronDown, ChevronUp, Flame } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardCheck, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useGoals } from "@/hooks/useGoals";
 import { useNow } from "@/hooks/useNow";
+import { formatMinutes, type DayEvaluation } from "@/lib/goals";
 import { currentStreak, dailyTotals } from "@/lib/stats";
 import { dayKey, formatDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,9 @@ export function Dashboard() {
   const daily = useMemo(() => dailyTotals(spans, nowMs), [spans, nowMs]);
   const todaySec = daily.get(dayKey(nowMs)) ?? 0;
   const streak = currentStreak(daily, nowMs);
+  const goals = useGoals(nowMs);
+  const todayEval = goals.evaluate(goals.today);
+  const dayGoal = todayEval.items.find((i) => i.projectId === null)?.targetMin ?? 0;
 
   return (
     <section
@@ -46,12 +51,18 @@ export function Dashboard() {
         <div className="flex h-full items-center gap-6 px-4 text-sm">
           <span className="text-muted-foreground">
             Hôm nay <span className="font-semibold text-foreground">{formatDuration(todaySec)}</span>
+            {dayGoal > 0 && <span className="tabular-nums"> / {formatMinutes(dayGoal)}</span>}
           </span>
+          {todayEval.items.length > 0 && (
+            <span className="text-muted-foreground tabular-nums">
+              Chỉ tiêu {todayEval.items.length - todayEval.missed.length}/{todayEval.items.length}
+            </span>
+          )}
           <StreakLabel streak={streak} />
         </div>
       ) : (
         <div className="flex h-full gap-5 p-4 pr-12">
-          <TodayCard todaySec={todaySec} streak={streak} />
+          <TodayCard todaySec={todaySec} streak={streak} dayGoal={dayGoal} ev={todayEval} />
           {/* Heatmap gives way to the chart on narrow windows. */}
           <div className="hidden shrink-0 xl:flex">
             <Heatmap daily={daily} nowMs={nowMs} />
@@ -66,14 +77,53 @@ export function Dashboard() {
   );
 }
 
-function TodayCard({ todaySec, streak }: { todaySec: number; streak: number }) {
+interface TodayCardProps {
+  todaySec: number;
+  streak: number;
+  /** Whole-day goal in minutes (0 = none). */
+  dayGoal: number;
+  ev: DayEvaluation;
+}
+
+function TodayCard({ todaySec, streak, dayGoal, ev }: TodayCardProps) {
+  const setReviewDay = useUiStore((s) => s.setReviewDay);
+  const percent = dayGoal > 0 ? Math.min(100, (todaySec / 60 / dayGoal) * 100) : 0;
+  const met = ev.items.length - ev.missed.length;
   return (
-    <div className="flex w-[150px] shrink-0 flex-col justify-between rounded-xl border bg-card p-4">
+    <div className="flex w-[160px] shrink-0 flex-col justify-between gap-2 rounded-xl border bg-card p-4">
       <div>
         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Hôm nay</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums">{formatDuration(todaySec)}</p>
+        {dayGoal > 0 && (
+          <div className="mt-1.5 grid gap-1">
+            <span className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <span
+                className={cn("block h-full rounded-full", percent >= 100 ? "bg-green-500" : "bg-primary")}
+                style={{ width: `${percent}%` }}
+              />
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">mục tiêu {formatMinutes(dayGoal)}</span>
+          </div>
+        )}
       </div>
-      <StreakLabel streak={streak} />
+      <div className="grid gap-1.5">
+        {ev.items.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setReviewDay(ev.day)}
+            className="flex items-center gap-1.5 text-left text-xs whitespace-nowrap text-muted-foreground hover:text-foreground"
+            title="Xem chỉ tiêu và ghi lý do"
+          >
+            <ClipboardCheck className="size-3.5 shrink-0" />
+            Chỉ tiêu
+            <span className={cn("tabular-nums", met === ev.items.length ? "text-green-400" : "text-foreground")}>
+              {met}/{ev.items.length}
+            </span>
+            <span className="underline underline-offset-2">Tổng kết</span>
+          </button>
+        )}
+        <StreakLabel streak={streak} />
+      </div>
     </div>
   );
 }

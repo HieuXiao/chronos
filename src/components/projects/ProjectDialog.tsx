@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_PROJECT_COLOR, PROJECT_COLORS, nextProjectColor } from "@/lib/colors";
+import { goalOn, indexGoals, minutesToInput, parseHoursInput } from "@/lib/goals";
 import { dayKey } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
@@ -22,6 +23,7 @@ export function ProjectDialog() {
   const setProjectDialog = useUiStore((s) => s.setProjectDialog);
   const createProject = useAppStore((s) => s.createProject);
   const updateProject = useAppStore((s) => s.updateProject);
+  const setGoals = useAppStore((s) => s.setGoals);
 
   const editing = state?.mode === "edit" ? state.project : null;
   const [name, setName] = useState("");
@@ -30,6 +32,8 @@ export function ProjectDialog() {
   const [color, setColor] = useState<string>(DEFAULT_PROJECT_COLOR);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [dailyMin, setDailyMin] = useState("");
+  const [initialDailyMin, setInitialDailyMin] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -40,6 +44,11 @@ export function ProjectDialog() {
     setColor(editing?.color ?? nextProjectColor(useAppStore.getState().projects));
     setStartDate(editing ? (editing.startDate ?? "") : dayKey(Date.now()));
     setEndDate(editing?.endDate ?? "");
+    const minutes = editing
+      ? goalOn(indexGoals(useAppStore.getState().goals).byProject.get(editing.id), dayKey(Date.now()))
+      : 0;
+    setInitialDailyMin(minutes);
+    setDailyMin(minutesToInput(minutes));
     setSubmitting(false);
   }, [state, editing]);
 
@@ -47,7 +56,10 @@ export function ProjectDialog() {
   const targetInvalid = targetNumber !== null && (!Number.isFinite(targetNumber) || targetNumber <= 0);
   // 'YYYY-MM-DD' strings compare correctly as text.
   const datesInvalid = startDate !== "" && endDate !== "" && endDate < startDate;
-  const canSubmit = name.trim().length > 0 && startDate !== "" && !targetInvalid && !datesInvalid && !submitting;
+  const dailyMinutes = parseHoursInput(dailyMin);
+  const dailyInvalid = dailyMinutes === null || dailyMinutes > 24 * 60;
+  const canSubmit =
+    name.trim().length > 0 && startDate !== "" && !targetInvalid && !datesInvalid && !dailyInvalid && !submitting;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -61,9 +73,13 @@ export function ProjectDialog() {
       startDate,
       endDate: endDate || null,
     };
-    const ok = editing
-      ? await updateProject(editing.id, values)
-      : (await createProject(values)) !== undefined;
+    let id: number | undefined;
+    if (editing) id = (await updateProject(editing.id, values)) ? editing.id : undefined;
+    else id = (await createProject(values))?.id;
+    let ok = id !== undefined;
+    if (ok && id !== undefined && dailyMinutes !== null && dailyMinutes !== initialDailyMin) {
+      ok = await setGoals([{ projectId: id, minutes: dailyMinutes }]);
+    }
     setSubmitting(false);
     if (ok) setProjectDialog(null);
   };
@@ -75,7 +91,7 @@ export function ProjectDialog() {
           <DialogHeader>
             <DialogTitle>{editing ? "Sửa project" : "Thêm project"}</DialogTitle>
             <DialogDescription>
-              Đặt số giờ mục tiêu và hạn hoàn thành để Chronos dự báo bạn có kịp không.
+              Đặt tổng số giờ mục tiêu, hạn hoàn thành và số giờ tối thiểu mỗi ngày cho nhóm công việc này.
             </DialogDescription>
           </DialogHeader>
 
@@ -91,7 +107,7 @@ export function ProjectDialog() {
             />
           </div>
 
-          <div className="grid grid-cols-[1fr_96px] gap-3">
+          <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
             <div className="grid gap-2">
               <Label htmlFor="project-target">Mục tiêu (giờ)</Label>
               <Input
@@ -101,6 +117,17 @@ export function ProjectDialog() {
                 onChange={(e) => setTarget(e.target.value)}
                 placeholder="VD: 150"
                 aria-invalid={targetInvalid || undefined}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="project-daily">Tối thiểu/ngày (giờ)</Label>
+              <Input
+                id="project-daily"
+                inputMode="decimal"
+                value={dailyMin}
+                onChange={(e) => setDailyMin(e.target.value)}
+                placeholder="VD: 2"
+                aria-invalid={dailyInvalid || undefined}
               />
             </div>
             <div className="grid gap-2">
