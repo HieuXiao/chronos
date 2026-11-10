@@ -5,7 +5,18 @@ import * as projectsDb from "@/db/queries/projects";
 import * as sessionsDb from "@/db/queries/sessions";
 import { attempt, errorMessage } from "@/lib/errors";
 import { dayKey } from "@/lib/time";
-import type { DailyGoal, DayReport, Id, NewProject, Project, ProjectPatch, Session, SessionSpan } from "@/types";
+import type {
+  DailyGoal,
+  DayReason,
+  DayReport,
+  Id,
+  NewProject,
+  Project,
+  ProjectPatch,
+  ReasonLabel,
+  Session,
+  SessionSpan,
+} from "@/types";
 import { useUiStore } from "./uiStore";
 
 export type DbStatus = "idle" | "connecting" | "ready" | "error";
@@ -26,8 +37,12 @@ interface AppState {
   spans: SessionSpan[];
   /** Goal history: work time per day and each project's minimum per day. */
   goals: DailyGoal[];
-  /** Why each project went the way it did on a day. */
+  /** What was done on each project on a day. */
   reports: DayReport[];
+  /** Why a day missed its work time, as labels. */
+  dayReasons: DayReason[];
+  /** Labels for missed days (groups and labels under them). */
+  labels: ReasonLabel[];
   settings: Record<string, string>;
 
   init: () => Promise<void>;
@@ -50,6 +65,8 @@ interface AppState {
   /** Sets a goal from today on (`projectId` null = work time per day). Minutes 0 removes it. */
   setGoal: (projectId: Id | null, minutes: number) => Promise<boolean>;
   saveReport: (day: string, projectId: Id, note: string) => Promise<void>;
+  saveDayReason: (day: string, labelIds: Id[], note: string) => Promise<boolean>;
+  createLabel: (name: string, parentId: Id | null) => Promise<ReasonLabel | undefined>;
   setSetting: (key: string, value: string) => Promise<void>;
 }
 
@@ -77,6 +94,8 @@ export const useAppStore = create<AppState>()((set, get) => {
     spans: [],
     goals: [],
     reports: [],
+    dayReasons: [],
+    labels: [],
     settings: {},
 
     init: async () => {
@@ -94,15 +113,17 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     refresh: async () => {
       await attempt("Không tải được dữ liệu", async () => {
-        const [projects, running, spans, goals, reports, settings] = await Promise.all([
+        const [projects, running, spans, goals, reports, dayReasons, labels, settings] = await Promise.all([
           projectsDb.listProjects({ includeArchived: true }),
           sessionsDb.getRunningSession(),
           sessionsDb.listSessionSpans(),
           goalsDb.listGoals(),
           goalsDb.listReports(),
+          goalsDb.listDayReasons(),
+          goalsDb.listReasonLabels(),
           goalsDb.getSettings(),
         ]);
-        set({ projects, running, spans, goals, reports, settings });
+        set({ projects, running, spans, goals, reports, dayReasons, labels, settings });
       });
     },
 
@@ -187,6 +208,21 @@ export const useAppStore = create<AppState>()((set, get) => {
     saveReport: async (day, projectId, note) => {
       await attempt("Không lưu được báo cáo", () => goalsDb.saveReport(day, projectId, note));
       set({ reports: await goalsDb.listReports().catch(() => get().reports) });
+    },
+
+    saveDayReason: async (day, labelIds, note) => {
+      const ok = await attempt("Không lưu được lý do", async () => {
+        await goalsDb.saveDayReason(day, labelIds, note);
+        return true;
+      });
+      set({ dayReasons: await goalsDb.listDayReasons().catch(() => get().dayReasons) });
+      return ok === true;
+    },
+
+    createLabel: async (name, parentId) => {
+      const label = await attempt("Không tạo được nhãn", () => goalsDb.createReasonLabel(name, parentId));
+      if (label) set({ labels: [...get().labels, label] });
+      return label;
     },
 
     setSetting: async (key, value) => {

@@ -58,12 +58,14 @@ Mọi dữ liệu nằm trong một file SQLite trên máy bạn. Không cần t
 ### 📊 Dashboard
 - Thời gian hôm nay và **chuỗi ngày liên tục** (streak).
 - **Heatmap** 12 tuần gần nhất.
-- **Biểu đồ cột chồng** theo project, xem theo Tuần / Tháng / Năm.
+- Báo cáo có 2 tab, xem theo Tuần / Tháng / Năm:
+  - **Thời gian**: biểu đồ cột chồng theo project. Bấm vào phần cột của một project để ghi **hôm đó đã làm gì** (có gợi ý từ ghi chú lúc dừng timer).
+  - **Nguyên nhân**: tỉ lệ ngày đạt (so với kỳ trước), số ngày chưa đạt và mức hụt trung bình, cùng bảng xếp hạng nguyên nhân kiểu Pareto (theo nhãn hoặc nhóm) làm nổi bật nhóm nguyên nhân chiếm khoảng 80% số lần được ghi.
 
 ### 🎯 Chỉ tiêu hằng ngày
 - Đặt tổng số phút mỗi ngày và/hoặc mức tối thiểu cho từng project.
 - Chỉ tiêu có **lịch sử**: đổi chỉ tiêu hôm nay không làm thay đổi cách đánh giá những ngày đã qua.
-- Ngày không đạt có thể gắn **lý do** (nhãn có sẵn như *Mất tập trung*, *Việc đột xuất*, *Ngủ dậy muộn*… hoặc nhãn tự tạo) kèm ghi chú.
+- Ngày không đủ thời gian cần đạt có dấu chấm dưới cột trên biểu đồ. Bấm vào để gắn **lý do theo ngày** bằng nhãn (có sẵn như *Mất tập trung*, *Việc đột xuất*, *Ngủ dậy muộn*… hoặc nhãn và nhóm tự tạo), kèm ghi chú nếu cần.
 - **Nhắc nhở**: báo những ngày gần đây chưa ghi lý do, và mời tổng kết ngày vào giờ bạn chọn.
 
 ### 📈 Thống kê (Insights)
@@ -195,7 +197,8 @@ File dữ liệu: `data.db` trong thư mục cấu hình của app (trên Window
 | `todos` | Todo theo project, có thứ tự |
 | `notes` | Một ghi chú cho mỗi project |
 | `daily_goals` | Lịch sử chỉ tiêu ngày (`project_id = NULL` là chỉ tiêu tổng) |
-| `miss_reasons`, `miss_labels`, `miss_reason_labels` | Lý do không đạt chỉ tiêu và nhãn |
+| `miss_reasons` | Có `project_id`: hôm đó đã làm gì cho project. `project_id` và `group_id` đều `NULL`: lý do ngày chưa đạt |
+| `reason_labels`, `reason_label_links` | Nhãn lý do (2 cấp: nhóm → nhãn) và nhãn gắn với từng lý do |
 | `settings` | Cài đặt dạng key/value |
 
 **Quy ước thời gian**

@@ -29,6 +29,8 @@ interface UiState {
   projectDialog: ProjectDialogState;
   settingsOpen: boolean;
   report: ReportTarget | null;
+  /** The day whose missed-goal reason is being written. */
+  dayReason: LocalDate | null;
 
   openSidebar: (projectId: Id) => void;
   closeSidebar: () => void;
@@ -40,6 +42,8 @@ interface UiState {
   setSettingsOpen: (open: boolean) => void;
   openReport: (target: ReportTarget) => void;
   closeReport: () => void;
+  openDayReason: (day: LocalDate) => void;
+  closeDayReason: () => void;
 }
 
 export const useUiStore = create<UiState>()((set, get) => ({
@@ -49,6 +53,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   projectDialog: null,
   settingsOpen: false,
   report: null,
+  dayReason: null,
 
   openSidebar: (projectId) => set({ sidebarProjectId: projectId }),
   closeSidebar: () => set({ sidebarProjectId: null }),
@@ -62,4 +67,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   openReport: (target) => set({ report: target }),
   closeReport: () => set({ report: null }),
+  openDayReason: (day) => set({ dayReason: day }),
+  closeDayReason: () => set({ dayReason: null }),
 }));

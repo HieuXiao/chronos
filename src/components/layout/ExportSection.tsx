@@ -30,14 +30,16 @@ async function exportData(format: Format) {
   ]);
   let contents: string;
   if (format === "json") {
-    const [todos, notes, links, goals, reports] = await Promise.all([
+    const [todos, notes, links, goals, reports, dayReasons, reasonLabels] = await Promise.all([
       todosDb.listAllTodos(),
       notesDb.listAllNotes(),
       linksDb.listAllLinks(),
       goalsDb.listGoals(),
       goalsDb.listReports(),
+      goalsDb.listDayReasons(),
+      goalsDb.listReasonLabels(),
     ]);
-    contents = buildJsonExport({ projects, sessions, todos, notes, links, goals, reports });
+    contents = buildJsonExport({ projects, sessions, todos, notes, links, goals, reports, dayReasons, reasonLabels });
   } else {
     contents = buildSessionsCsv(sessions, projects);
   }
@@ -50,7 +52,7 @@ export function ExportSection() {
     <div className="grid gap-2">
       <div className="flex items-center gap-1.5">
         <p className="text-sm font-medium">Xuất dữ liệu</p>
-        <InfoTip>JSON chứa mọi thứ: project, session, todo, ghi chú, tài liệu, mục tiêu và báo cáo. CSV mở được bằng Excel.</InfoTip>
+        <InfoTip>JSON chứa mọi thứ: project, session, todo, ghi chú, tài liệu, mục tiêu, báo cáo và lý do chưa đạt. CSV mở được bằng Excel.</InfoTip>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" onClick={() => void attempt("Không xuất được JSON", () => exportData("json"))}>
