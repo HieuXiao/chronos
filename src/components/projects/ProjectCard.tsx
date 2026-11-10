@@ -64,6 +64,7 @@ export function ProjectCard({ project, running, totalSec, todaySec, dailyMinMinu
         role="button"
         tabIndex={0}
         aria-label={`${project.name}: mở chi tiết`}
+        data-keep-sidebar
         onClick={() => openSidebar(project.id)}
         onKeyDown={(e) => {
           if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
