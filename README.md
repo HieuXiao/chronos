@@ -49,6 +49,8 @@ Mọi dữ liệu nằm trên máy bạn. Không cần tài khoản, không có 
 - Bấm vào phần cột của một project để ghi lại **hôm đó đã làm gì**.
 - Tab **Nguyên nhân**: tỉ lệ ngày đạt so với kỳ trước, số ngày chưa đạt, mức hụt trung bình, và bảng xếp hạng nguyên nhân làm nổi bật những lý do chiếm phần lớn số ngày chưa đạt.
 
+![Tab Nguyên nhân](docs/screenshots/reasons.png)
+
 **Chạy nền**
 - Đóng cửa sổ thì app thu xuống khay hệ thống, timer vẫn chạy. Rê chuột vào biểu tượng khay để xem timer đang chạy.
 - Tuỳ chọn khởi động cùng Windows.
