@@ -12,101 +12,78 @@ Ghi lại từng phút bạn dành cho các project dài hạn và dự báo ng�
 ![SQLite](https://img.shields.io/badge/SQLite-local-003B57?logo=sqlite&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+![Màn hình chính của Chronos](docs/screenshots/home.png)
+
 </div>
 
 ---
 
-## Mục lục
+## Ý tưởng
 
-- [Giới thiệu](#giới-thiệu)
-- [Tính năng](#tính-năng)
-- [Cài đặt & chạy](#cài-đặt--chạy)
-- [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng)
-- [Cách tính dự báo](#cách-tính-dự-báo)
-- [Kiến trúc](#kiến-trúc)
-- [Cơ sở dữ liệu](#cơ-sở-dữ-liệu)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Xuất dữ liệu](#xuất-dữ-liệu)
-- [Phát triển](#phát-triển)
-- [Lộ trình](#lộ-trình)
-- [Giấy phép](#giấy-phép)
+Học một ngôn ngữ mới, ôn thi chứng chỉ, làm đồ án hay một side project đều cần hàng trăm giờ. Khó nhất không phải là bắt đầu, mà là giữ nhịp mỗi ngày và nhìn ra điều gì đang kéo mình chậm lại.
 
-## Giới thiệu
+Chronos giải quyết việc đó theo cách đơn giản nhất: mỗi project có một nút **Bắt đầu**. Bấm khi bắt đầu làm, bấm lại khi dừng. Từ thời gian đó, app cho bạn biết:
 
-Chronos dành cho những ai theo đuổi các mục tiêu dài hơi: học một ngôn ngữ, viết một cuốn sách, ôn thi, xây một side project... Bạn chỉ cần bấm **Play** khi bắt đầu và **Stop** khi dừng. Chronos lo phần còn lại:
+- Mỗi project đã làm được bao nhiêu giờ so với mục tiêu, và với tốc độ hiện tại thì **khi nào xong**.
+- Hôm nay đã đủ thời gian cần làm chưa, và đang giữ được **chuỗi ngày** liên tục bao lâu.
+- Những ngày chưa đạt là **vì sao**, và lý do nào lặp lại nhiều nhất để bạn xử lý trước.
 
-- Cộng dồn giờ làm cho từng project và so với số giờ mục tiêu.
-- Tính tốc độ làm việc gần đây và **dự báo ngày hoàn thành**.
-- Đặt **chỉ tiêu mỗi ngày**, ghi lại **lý do** những hôm không đạt, rồi thống kê xem điều gì cản trở bạn nhiều nhất.
-
-Mọi dữ liệu nằm trong một file SQLite trên máy bạn. Không cần tài khoản, không có cloud, không có telemetry.
+Mọi dữ liệu nằm trên máy bạn. Không cần tài khoản, không có cloud.
 
 ## Tính năng
 
-### ⏱️ Timer
-- Mỗi project có một timer. **Tại một thời điểm chỉ một timer được chạy**, ràng buộc này được đảm bảo ở tầng cơ sở dữ liệu.
-- Khi dừng timer, app hỏi *"vừa làm gì?"* để bạn ghi chú cho session.
-- **Phím tắt toàn cục** `Ctrl+Shift+Space` bật/tắt timer gần nhất, kể cả khi cửa sổ đang ẩn.
-- **Phát hiện rời máy**: nếu không có thao tác bàn phím/chuột quá 10 phút trong lúc timer chạy, Chronos đưa cửa sổ lên trước và hỏi bạn muốn giữ hay bỏ khoảng thời gian rảnh đó.
+**Bấm giờ**
+- Mỗi project một timer, tại một thời điểm chỉ một timer chạy.
+- Khi dừng, app hỏi nhanh *"vừa làm gì?"* để ghi chú cho lần làm đó.
+- Phím tắt `Ctrl+Shift+Space` bật/dừng timer gần nhất từ bất kỳ đâu, kể cả khi cửa sổ đang ẩn.
+- Rời máy quá 10 phút trong lúc timer chạy, app hỏi bạn có muốn bỏ khoảng thời gian đó không.
 
-### 📁 Project
-- Tên, màu (bảng màu thân thiện với người mù màu), số giờ mục tiêu, ngày bắt đầu và hạn chót (tuỳ chọn).
-- Thanh tiến độ, giờ đã làm, giờ còn lại và **ngày hoàn thành dự kiến**.
-- Mỗi project có **todo list** (kéo thả để sắp xếp) và một **ghi chú** riêng.
-- **Kéo thả** thẻ project ở trang chủ để sắp xếp thứ tự.
-- Lưu trữ (archive) hoặc xoá vĩnh viễn.
+**Project**
+- Tên, biểu tượng, màu, tổng số giờ cần đạt, ngày bắt đầu và hạn chót.
+- Lý do của project, việc cần làm, ghi chú và tài liệu liên quan nằm chung trong một panel chi tiết.
+- Ngày hoàn thành dự kiến dựa trên tốc độ làm việc 14 ngày gần nhất.
+- Kéo thả để sắp xếp thẻ project. Lưu trữ project đã xong để trang chủ gọn gàng.
 
-### 📊 Dashboard
-- Thời gian hôm nay và **chuỗi ngày liên tục** (streak).
-- **Heatmap** 12 tuần gần nhất.
-- Báo cáo có 2 tab, xem theo Tuần / Tháng / Năm:
-  - **Thời gian**: biểu đồ cột chồng theo project. Bấm vào phần cột của một project để ghi **hôm đó đã làm gì** (có gợi ý từ ghi chú lúc dừng timer).
-  - **Nguyên nhân**: tỉ lệ ngày đạt (so với kỳ trước), số ngày chưa đạt và mức hụt trung bình, cùng bảng xếp hạng nguyên nhân kiểu Pareto (theo nhãn hoặc nhóm) làm nổi bật nhóm nguyên nhân chiếm khoảng 80% số lần được ghi.
+**Báo cáo**
+- Tab **Thời gian**: biểu đồ thời gian làm mỗi ngày theo từng project, xem theo tuần, tháng hoặc năm, kèm vạch thời gian cần đạt mỗi ngày.
+- Bấm vào phần cột của một project để ghi lại **hôm đó đã làm gì**.
+- Tab **Nguyên nhân**: tỉ lệ ngày đạt so với kỳ trước, số ngày chưa đạt, mức hụt trung bình, và bảng xếp hạng nguyên nhân làm nổi bật những lý do chiếm phần lớn số ngày chưa đạt.
 
-### 🎯 Chỉ tiêu hằng ngày
-- Đặt tổng số phút mỗi ngày và/hoặc mức tối thiểu cho từng project.
-- Chỉ tiêu có **lịch sử**: đổi chỉ tiêu hôm nay không làm thay đổi cách đánh giá những ngày đã qua.
-- Ngày không đủ thời gian cần đạt có dấu chấm dưới cột trên biểu đồ. Bấm vào để gắn **lý do theo ngày** bằng nhãn (có sẵn như *Mất tập trung*, *Việc đột xuất*, *Ngủ dậy muộn*… hoặc nhãn và nhóm tự tạo), kèm ghi chú nếu cần.
-- **Nhắc nhở**: báo những ngày gần đây chưa ghi lý do, và mời tổng kết ngày vào giờ bạn chọn.
+**Chạy nền**
+- Đóng cửa sổ thì app thu xuống khay hệ thống, timer vẫn chạy. Rê chuột vào biểu tượng khay để xem timer đang chạy.
+- Tuỳ chọn khởi động cùng Windows.
+- Giao diện sáng, tối hoặc theo hệ thống.
+- Sao lưu toàn bộ dữ liệu ra JSON, hoặc xuất bảng các lần làm việc ra CSV để mở bằng Excel.
 
-### 📈 Thống kê (Insights)
-- Xem theo 7 / 30 / 90 ngày hoặc toàn bộ.
-- Số ngày đạt trọn chỉ tiêu, số lượt không đạt, tổng số phút còn thiếu.
-- Xếp hạng lý do hay gặp nhất và project bị ảnh hưởng nhiều nhất.
-- Thống kê theo từng nhóm công việc và các ghi chú gần đây.
+## Cài đặt
 
-### 🗂️ Lịch sử
-- Lọc session theo project và khoảng ngày.
-- Thêm session thủ công, sửa hoặc xoá session.
+Tải file `Chronos_x.y.z_x64-setup.exe` ở mục [Releases](https://github.com/HieuXiao/chronos/releases) rồi chạy để cài.
 
-### 🖥️ Tích hợp hệ thống
-- **Khay hệ thống**: tooltip hiển thị timer đang chạy theo từng giây; menu có Start/Stop nhanh.
-- Bấm đóng cửa sổ thì app **thu xuống khay** thay vì thoát. Chọn *Thoát* trong menu khay để tắt hẳn.
-- **Khởi động cùng Windows** (chạy ẩn dưới khay).
-- **Một phiên bản duy nhất**: mở app lần nữa chỉ đưa cửa sổ đang chạy lên trước.
+> File cài đặt chưa được ký số nên Windows có thể hiện cảnh báo *"Windows protected your PC"*. Chọn **More info → Run anyway** để tiếp tục.
 
-### 💾 Dữ liệu
-- Xuất **JSON** (toàn bộ dữ liệu) hoặc **CSV** (bảng session, UTF-8 BOM để Excel hiển thị đúng tiếng Việt).
+## Cách dùng
 
-## Cài đặt & chạy
+![Panel chi tiết project](docs/screenshots/project-details.png)
 
-### Yêu cầu
+1. **Đặt thời gian cần làm mỗi ngày.** Mở **Cài đặt** (biểu tượng bánh răng), nhập số giờ, ví dụ `6`. Con số này hiện thành vạch ngang trên biểu đồ.
+2. **Tạo project.** Bấm **Thêm project**, đặt tên, chọn màu và nhập tổng số giờ cần đạt, ví dụ 200 giờ cho "Học tiếng Nhật N3". Có thể đặt thêm mức tối thiểu mỗi ngày cho riêng project đó.
+3. **Bấm Bắt đầu** khi làm, **Dừng** khi xong, rồi ghi một dòng ngắn về việc vừa làm.
+4. **Bấm vào thẻ project** để mở panel chi tiết: lý do làm project, mục tiêu, việc cần làm, ghi chú và tài liệu. Bấm ra ngoài để đóng.
+5. **Cuối ngày, xem biểu đồ.** Ngày nào chưa đủ giờ sẽ có dấu chấm cam dưới cột. Bấm vào đó, chọn các nhãn lý do như *Lướt mạng xã hội*, *Ngủ dậy muộn*, *Việc đột xuất*… hoặc tạo nhãn mới.
+6. **Mỗi tuần, mở tab Nguyên nhân** để xem tỉ lệ ngày đạt đang tăng hay giảm và lý do nào cần xử lý trước.
 
-| Công cụ | Phiên bản |
+Sau khoảng 7 ngày có dữ liệu, panel chi tiết bắt đầu hiển thị ngày hoàn thành dự kiến của project.
+
+### Phím tắt
+
+| Phím | Chức năng |
 |---|---|
-| [Node.js](https://nodejs.org/) | 20 trở lên |
-| [Rust](https://rustup.rs/) | 1.77.2 trở lên |
-| Phụ thuộc hệ thống của Tauri | Xem [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (trên Windows: Microsoft C++ Build Tools và WebView2) |
+| `Ctrl+Shift+Space` | Bật/dừng timer gần nhất (dùng được ở mọi nơi) |
+| `Esc` | Đóng panel chi tiết |
 
-### Chạy ở chế độ phát triển
+## Build từ mã nguồn
 
-```bash
-git clone https://github.com/HieuXiao/chronos.git
-```
-
-```bash
-cd chronos
-```
+Cần [Node.js](https://nodejs.org/) 20+, [Rust](https://rustup.rs/) và các [yêu cầu của Tauri](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 npm install
@@ -116,159 +93,12 @@ npm install
 npm run tauri dev
 ```
 
-Lệnh này khởi động Vite tại `http://localhost:1420` rồi mở cửa sổ Tauri với hot reload.
-
-### Build bản cài đặt
-
 ```bash
 npm run tauri build
 ```
 
-File cài đặt trên Windows nằm trong `src-tauri/target/release/bundle/`: `nsis/Chronos_<version>_x64-setup.exe` và `msi/Chronos_<version>_x64_en-US.msi`.
-
-## Hướng dẫn sử dụng
-
-1. **Tạo project**: đặt tên, chọn màu, nhập số giờ mục tiêu (ví dụ 200 giờ cho "Học tiếng Nhật N3").
-2. **Bấm Play** khi bắt đầu làm. Bấm **Stop** (hoặc `Ctrl+Shift+Space`) khi dừng, rồi ghi chú ngắn nếu muốn.
-3. Sau khoảng **7 ngày** có dữ liệu, thẻ project bắt đầu hiển thị **ngày hoàn thành dự kiến**.
-4. Mở **Cài đặt** để đặt chỉ tiêu mỗi ngày và giờ nhắc tổng kết.
-5. Cuối ngày, ghi lý do cho các chỉ tiêu chưa đạt. Trang **Thống kê** sẽ cho bạn thấy xu hướng.
-
-### Phím tắt
-
-| Phím | Chức năng |
-|---|---|
-| `Ctrl+Shift+Space` | Bật/tắt timer gần nhất (hoạt động toàn hệ thống) |
-
-## Cách tính dự báo
-
-```
-velocity  = số giờ đã làm trong 14 ngày gần nhất / 14   (tính cả ngày nghỉ)
-remaining = target_hours − số giờ đã làm
-eta       = hôm nay + ceil(remaining / velocity) ngày
-```
-
-Chronos **không** đưa ra ngày dự kiến khi:
-- project chưa có giờ mục tiêu,
-- đã đạt mục tiêu (hiển thị *Đã hoàn thành*),
-- tốc độ bằng 0, hoặc lịch sử ít hơn **7 ngày**. Trong trường hợp này app báo *chưa đủ dữ liệu* thay vì đưa ra một ngày gây hiểu nhầm.
-
-Logic nằm trong [src/lib/forecast.ts](src/lib/forecast.ts).
-
-## Kiến trúc
-
-```
-┌──────────────────────────── Frontend (WebView) ───────────────────────────┐
-│  React 18 + React Router · Zustand store · Tailwind CSS 4 · Radix UI       │
-│                                                                            │
-│  pages/ ─ components/ ─ hooks/ ─ lib/ (stats, forecast, goals, insights)   │
-│                     │                                                      │
-│               db/queries/*  ──►  @tauri-apps/plugin-sql                    │
-└─────────────────────┼──────────────────────────────────────────────────────┘
-                      │ IPC
-┌─────────────────────▼──────────── Backend (Rust / Tauri 2) ───────────────┐
-│  tauri-plugin-sql (SQLite + migrations)   tray.rs   (khay, tooltip, menu)  │
-│  global-shortcut · autostart · dialog     system.rs (idle time, ghi file)  │
-│  single-instance                                                           │
-└────────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Frontend** truy vấn SQLite trực tiếp qua `tauri-plugin-sql`. Toàn bộ logic nghiệp vụ (thống kê, dự báo, đánh giá chỉ tiêu) là các hàm thuần trong `src/lib/`.
-- **Backend Rust** giữ ở mức tối thiểu: đăng ký plugin, chạy migration, quản lý khay hệ thống, đọc thời gian rảnh của hệ điều hành (`GetLastInputInfo` trên Windows) và ghi file xuất.
-
-### Tech stack
-
-| Tầng | Công nghệ |
-|---|---|
-| Desktop shell | Tauri 2 |
-| UI | React 18, TypeScript, Tailwind CSS 4, Radix UI, lucide-react, sonner |
-| State | Zustand |
-| Kéo thả | dnd-kit |
-| Lưu trữ | SQLite qua `tauri-plugin-sql` |
-| Build | Vite 7 |
-
-## Cơ sở dữ liệu
-
-File dữ liệu: `data.db` trong thư mục cấu hình của app (trên Windows là `%APPDATA%\chronos\data.db`).
-
-| Bảng | Mô tả |
-|---|---|
-| `projects` | Project: tên, màu, giờ mục tiêu, ngày bắt đầu/kết thúc, trạng thái lưu trữ, thứ tự hiển thị (`order_index`) |
-| `sessions` | Các phiên làm việc. `ended_at = NULL` nghĩa là timer đang chạy |
-| `todos` | Todo theo project, có thứ tự |
-| `notes` | Một ghi chú cho mỗi project |
-| `daily_goals` | Lịch sử chỉ tiêu ngày (`project_id = NULL` là chỉ tiêu tổng) |
-| `miss_reasons` | Có `project_id`: hôm đó đã làm gì cho project. `project_id` và `group_id` đều `NULL`: lý do ngày chưa đạt |
-| `reason_labels`, `reason_label_links` | Nhãn lý do (2 cấp: nhóm → nhãn) và nhãn gắn với từng lý do |
-| `settings` | Cài đặt dạng key/value |
-
-**Quy ước thời gian**
-- Mốc thời gian (`started_at`, `created_at`…) luôn lưu ở dạng **ISO 8601 UTC**. Chỉ đổi sang giờ địa phương khi hiển thị.
-- Ngày lịch (`start_date`, `effective_from`, `day`…) lưu ở dạng `YYYY-MM-DD` theo **ngày địa phương** của người dùng.
-
-Migration nằm trong [src/db/migrations/](src/db/migrations/) và được đăng ký ở [src-tauri/src/db.rs](src-tauri/src/db.rs).
-
-## Cấu trúc thư mục
-
-```
-chronos/
-├── src/                      # Frontend React
-│   ├── pages/                # Home, History, Insights
-│   ├── components/
-│   │   ├── dashboard/        # Dashboard, heatmap, biểu đồ hoạt động
-│   │   ├── goals/            # Chỉ tiêu ngày, dialog tổng kết
-│   │   ├── history/          # Dialog sửa/thêm session
-│   │   ├── layout/           # TopBar, Settings, Export
-│   │   ├── projects/         # Dialog project, tiến độ
-│   │   ├── sidebar/          # Todo list, ghi chú
-│   │   ├── timers/           # Thẻ timer, dialog idle/stop
-│   │   └── ui/               # Component nền (shadcn/Radix)
-│   ├── db/
-│   │   ├── migrations/       # File .sql
-│   │   └── queries/          # Truy vấn theo từng bảng
-│   ├── hooks/                # Idle watcher, tích hợp hệ thống, nhắc nhở...
-│   ├── lib/                  # Logic thuần: stats, forecast, goals, insights, export
-│   ├── store/                # Zustand store (app + UI)
-│   └── types/
-└── src-tauri/                # Backend Rust
-    └── src/
-        ├── lib.rs            # Đăng ký plugin, xử lý vòng đời cửa sổ
-        ├── db.rs             # Khai báo migration
-        ├── tray.rs           # Khay hệ thống
-        └── system.rs         # Thời gian rảnh, ghi file
-```
-
-## Xuất dữ liệu
-
-Từ menu **Xuất** trên thanh trên cùng:
-
-- **JSON**: toàn bộ project, session, todo và ghi chú, kèm `formatVersion` để dùng cho việc nhập lại sau này.
-- **CSV**: bảng session với các cột `id, project_id, project_name, started_at, ended_at, duration_sec, duration_hours, note, source`.
-
-## Phát triển
-
-| Lệnh | Mô tả |
-|---|---|
-| `npm run tauri dev` | Chạy app với hot reload |
-| `npm run dev` | Chỉ chạy frontend Vite (các API của Tauri sẽ không hoạt động) |
-| `npm run typecheck` | Kiểm tra kiểu TypeScript |
-| `npm run build` | Build frontend vào `dist/` |
-| `npm run tauri build` | Build bản cài đặt |
-
-**Thêm migration mới**
-1. Tạo file `src/db/migrations/00N_ten_migration.sql`.
-2. Thêm một `Migration { version: N, ... }` vào [src-tauri/src/db.rs](src-tauri/src/db.rs).
-3. Không sửa migration đã phát hành. Mọi thay đổi schema đều đi qua migration mới.
-
-**Lưu ý nền tảng**: phát hiện thời gian rảnh hiện chỉ hỗ trợ Windows. Trên macOS/Linux hàm này trả về `0`, nên dialog rời máy sẽ không xuất hiện.
-
-## Lộ trình
-
-- [ ] Phát hiện thời gian rảnh trên macOS và Linux
-- [ ] Nhập lại dữ liệu từ file JSON
-- [ ] Tuỳ chỉnh phím tắt toàn cục
-- [ ] Giao diện sáng (light theme)
+Lệnh `tauri dev` chạy app ở chế độ phát triển. Lệnh `tauri build` tạo file cài đặt trong `src-tauri/target/release/bundle/`.
 
 ## Giấy phép
 
-Phát hành theo giấy phép [MIT](LICENSE) © 2026 Ngo Minh Hieu.
+[MIT](LICENSE) © 2026 Ngo Minh Hieu.
