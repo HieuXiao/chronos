@@ -43,6 +43,23 @@ export function Sidebar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, closeSidebar]);
 
+  // A click outside the panel closes it. Kept open for clicks on a project card
+  // (it switches project instead), the title bar (dragging the window), toasts,
+  // and while a dialog or menu is up (that click only closes the dialog/menu).
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      const target = e.target;
+      if (!(target instanceof Element) || panelRef.current?.contains(target)) return;
+      if (target.closest("[data-keep-sidebar],[data-sonner-toaster]")) return;
+      if (document.querySelector("[role=dialog],[role=alertdialog],[role=menu],[role=listbox]")) return;
+      closeSidebar();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open, closeSidebar]);
+
   return (
     <aside
       ref={panelRef}

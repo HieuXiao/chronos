@@ -3,6 +3,7 @@ import { SettingsDialog } from "@/components/layout/SettingsDialog";
 import { TopBar } from "@/components/layout/TopBar";
 import { ProjectDialog } from "@/components/projects/ProjectDialog";
 import { ProjectGrid } from "@/components/projects/ProjectGrid";
+import { DayReasonDialog } from "@/components/report/DayReasonDialog";
 import { ReportDialog } from "@/components/report/ReportDialog";
 import { ReportSection } from "@/components/report/ReportSection";
 import { Sidebar } from "@/components/sidebar/Sidebar";
@@ -50,6 +51,7 @@ export default function App() {
           <BackgroundServices />
           <Sidebar />
           <ReportDialog />
+          <DayReasonDialog />
         </>
       )}
       <ProjectDialog />

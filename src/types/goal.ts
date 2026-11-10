@@ -15,11 +15,28 @@ export interface DailyGoal {
   effectiveFrom: LocalDate;
 }
 
-/** Daily report of one project: why it went the way it did that day. */
+/** What was done on one project on one day. */
 export interface DayReport {
   id: Id;
   day: LocalDate;
   projectId: Id;
+  note: string | null;
+  updatedAt: IsoUtc;
+}
+
+/** A reason label for a missed day. Two levels: groups (parentId null) and labels under them. */
+export interface ReasonLabel {
+  id: Id;
+  name: string;
+  parentId: Id | null;
+  orderIndex: number;
+}
+
+/** Why the work time needed for a day was not reached: labels plus an optional note. */
+export interface DayReason {
+  id: Id;
+  day: LocalDate;
+  labelIds: Id[];
   note: string | null;
   updatedAt: IsoUtc;
 }

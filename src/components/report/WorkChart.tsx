@@ -1,40 +1,19 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  buildBuckets,
-  buildSeries,
-  niceScale,
-  periodLabel,
-  periodRange,
-  shiftAnchor,
-  type ChartPeriod,
-} from "@/lib/chart";
+import { buildBuckets, buildSeries, niceScale, type ChartPeriod } from "@/lib/chart";
 import { dayStatus, formatMinutes, goalOn, indexGoals, MAX_DAY_HOURS } from "@/lib/goals";
 import { addLocalDays, dayKey, formatDuration, formatHours } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
-import { PeriodPicker } from "./PeriodPicker";
 import { StatusChip } from "./StatusChip";
 
-const PERIOD_KEY = "chronos.chartPeriod";
-const MARGIN = { top: 18, right: 34, bottom: 20, left: 30 };
+const MARGIN = { top: 18, right: 34, bottom: 28, left: 30 };
 const MAX_BAR = 28;
 const SEGMENT_GAP = 2;
 const RADIUS = 4;
 /** Narrowest column that still gets its total written above it. */
 const MIN_BAND_FOR_TOTAL = 22;
-
-function readPeriod(): ChartPeriod {
-  try {
-    const v = localStorage.getItem(PERIOD_KEY);
-    return v === "month" || v === "year" ? v : "week";
-  } catch {
-    return "week";
-  }
-}
 
 function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -68,38 +47,39 @@ interface Hover {
   y: number;
 }
 
+interface WorkChartProps {
+  period: ChartPeriod;
+  anchorMs: number;
+  nowMs: number;
+  /** Year view: a month's column was clicked. */
+  onOpenMonth: (monthStartMs: number) => void;
+}
+
 /**
  * Time per project per day as stacked columns. Each piece of a column shows
- * that project's time, how it did against its minimum and the reason written
- * for it; the line is the work time needed per day.
+ * that project's time, how it did against its minimum and what was done;
+ * the line is the work time needed per day. Days under that line get a mark
+ * under their label that opens the missed-day reason.
  */
-export function WorkChart({ nowMs }: { nowMs: number }) {
+export function WorkChart({ period, anchorMs, nowMs, onOpenMonth }: WorkChartProps) {
   const spans = useAppStore((s) => s.spans);
   const projects = useAppStore((s) => s.projects);
   const goals = useAppStore((s) => s.goals);
   const reports = useAppStore((s) => s.reports);
+  const dayReasons = useAppStore((s) => s.dayReasons);
+  const labels = useAppStore((s) => s.labels);
   const openReport = useUiStore((s) => s.openReport);
+  const openDayReason = useUiStore((s) => s.openDayReason);
 
-  const [period, setPeriodState] = useState<ChartPeriod>(readPeriod);
-  const [anchorMs, setAnchorMs] = useState(() => Date.now());
   const [hover, setHover] = useState<Hover | null>(null);
   const [plotRef, size] = useSize<HTMLDivElement>();
-
-  const setPeriod = (p: ChartPeriod) => {
-    setPeriodState(p);
-    setHover(null);
-    try {
-      localStorage.setItem(PERIOD_KEY, p);
-    } catch {
-      // Preference only.
-    }
-  };
+  useEffect(() => setHover(null), [period, anchorMs]);
 
   const index = useMemo(() => indexGoals(goals), [goals]);
   const hatchId = `short-${useId().replace(/:/g, "")}`;
   const reportOf = useMemo(() => new Map(reports.map((r) => [`${r.day}|${r.projectId}`, r])), [reports]);
-  const range = periodRange(period, anchorMs);
-  const isCurrent = range.startMs <= nowMs && nowMs < range.endMs;
+  const reasonOf = useMemo(() => new Map(dayReasons.map((r) => [r.day, r])), [dayReasons]);
+  const labelName = useMemo(() => new Map(labels.map((l) => [l.id, l.name])), [labels]);
   const isYear = period === "year";
   const buckets = useMemo(() => buildBuckets(period, anchorMs, nowMs), [period, anchorMs, nowMs]);
   /** Hours per bucket: totals per day, or per month in the year view. */
@@ -121,6 +101,17 @@ export function WorkChart({ nowMs }: { nowMs: number }) {
     isYear && b.elapsedDays > 1 ? dayKey(addLocalDays(b.startMs, b.elapsedDays - 1)) : b.day;
   const targets = buckets.map((b) => Math.min(MAX_DAY_HOURS, goalOn(index.day, lastDayOf(b)) / 60));
   const hasLine = targets.some((t) => t > 0);
+  const today = dayKey(nowMs);
+  /** Under the day's work time (day views; today counts while it is still running). */
+  const missed = buckets.map((b, i) => !isYear && !b.future && targets[i]! > 0 && totals[i]! < targets[i]!);
+  /** Mark under the label: a passed missed day, or any day that has a reason. */
+  const markOf = (i: number): "todo" | "done" | null => {
+    if (!missed[i]) return null;
+    const b = buckets[i]!;
+    if (reasonOf.has(b.day)) return "done";
+    return b.day < today ? "todo" : null;
+  };
+  const anyTodo = buckets.some((_, i) => markOf(i) === "todo");
 
   // A work day tops out at MAX_DAY_HOURS: keep the axis fixed at 0–16h so
   // weeks compare at a glance; only a day beyond that stretches it.
@@ -169,58 +160,7 @@ export function WorkChart({ nowMs }: { nowMs: number }) {
   const hoverBucket = hover ? buckets[hover.bucket] : undefined;
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <h2 className="section-title">Báo cáo</h2>
-        <div className="ml-auto flex items-center gap-0.5">
-          <Button variant="ghost" size="icon-xs" aria-label="Khoảng trước" onClick={() => setAnchorMs((a) => shiftAnchor(period, a, -1))}>
-            <ChevronLeft />
-          </Button>
-          <PeriodPicker
-            period={period}
-            anchorMs={anchorMs}
-            nowMs={nowMs}
-            label={periodLabel(period, anchorMs)}
-            onPick={(ms) => {
-              setAnchorMs(ms);
-              setHover(null);
-            }}
-          />
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Khoảng sau"
-            disabled={isCurrent}
-            onClick={() => setAnchorMs((a) => shiftAnchor(period, a, 1))}
-          >
-            <ChevronRight />
-          </Button>
-        </div>
-        <div role="radiogroup" aria-label="Khoảng thời gian" className="flex rounded-md bg-muted p-0.5">
-          {(
-            [
-              ["week", "Tuần"],
-              ["month", "Tháng"],
-              ["year", "Năm"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={period === value}
-              onClick={() => setPeriod(value)}
-              className={cn(
-                "rounded px-2 py-0.5 text-xs transition-colors",
-                period === value ? "bg-primary font-medium text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
       <div ref={plotRef} className="relative min-h-0 flex-1" onPointerLeave={() => setHover(null)}>
         {size.width > 0 && size.height > 0 && (
           <svg width={size.width} height={size.height} className="block overflow-visible" role="img" aria-label="Thời gian theo ngày, xếp chồng theo project">
@@ -259,11 +199,8 @@ export function WorkChart({ nowMs }: { nowMs: number }) {
                       onPointerMove: (e: React.PointerEvent) => setHover({ bucket: i, seriesKey: s.key, x: e.clientX, y: e.clientY }),
                       onClick: () => {
                         if (b.future) return;
-                        if (isYear) {
-                          // A month's column opens that month.
-                          setPeriod("month");
-                          setAnchorMs(b.startMs);
-                        } else if (s.projectId !== null) openReport({ day: b.day, projectId: s.projectId });
+                        if (isYear) onOpenMonth(b.startMs);
+                        else if (s.projectId !== null) openReport({ day: b.day, projectId: s.projectId });
                       },
                       className: isYear || s.projectId !== null ? "cursor-pointer" : undefined,
                       opacity: dim ? 0.45 : 1,
@@ -298,19 +235,47 @@ export function WorkChart({ nowMs }: { nowMs: number }) {
               </g>
             )}
 
-            {buckets.map((b, i) =>
-              showLabel(i) ? (
+            {buckets.map((b, i) => {
+              const mark = markOf(i);
+              const reason = reasonOf.get(b.day);
+              const text = showLabel(i) || mark ? (
                 <text
-                  key={`x-${b.day}`}
                   x={cx(i)}
-                  y={size.height - 5}
+                  y={size.height - 13}
                   textAnchor="middle"
                   className={cn("text-[10px]", i === todayIndex ? "fill-foreground font-semibold" : "fill-muted-foreground")}
                 >
                   {b.label}
                 </text>
-              ) : null,
-            )}
+              ) : null;
+              if (!missed[i]) return <g key={`x-${b.day}`}>{text}</g>;
+              const tip = reason
+                ? `Lý do chưa đạt: ${reason.labelIds.map((id) => labelName.get(id)).filter(Boolean).join(", ") || reason.note || ""}\nBấm để sửa`
+                : "Chưa đạt thời gian cần đạt · bấm để ghi lý do";
+              return (
+                <g
+                  key={`x-${b.day}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${b.title}: ${reason ? "sửa lý do chưa đạt" : "ghi lý do chưa đạt"}`}
+                  className="cursor-pointer outline-none [&:focus-visible>rect]:stroke-ring"
+                  onClick={() => openDayReason(b.day)}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), openDayReason(b.day))}
+                >
+                  <title>{tip}</title>
+                  <rect x={cx(i) - band / 2} y={size.height - 26} width={band} height={26} fill="transparent" rx={4} />
+                  {text}
+                  {mark && (
+                    <circle
+                      cx={cx(i)}
+                      cy={size.height - 4}
+                      r={2.5}
+                      className={mark === "todo" ? "fill-warning" : "fill-muted-foreground/60"}
+                    />
+                  )}
+                </g>
+              );
+            })}
           </svg>
         )}
 
@@ -337,6 +302,12 @@ export function WorkChart({ nowMs }: { nowMs: number }) {
               <rect width="10" height="10" fill={`url(#${hatchId})`} />
             </svg>
             Chưa đạt tối thiểu
+          </li>
+        )}
+        {anyTodo && (
+          <li className="flex items-center gap-1.5">
+            <span className="size-[5px] rounded-full bg-warning" />
+            Chưa ghi lý do (bấm vào ngày)
           </li>
         )}
         {series.map((s) => (
@@ -441,13 +412,13 @@ function PieceTooltip({ x, y, title, name, color, actualSec, minMinutes, note, c
         </p>
       )}
       <p className="mt-2">
-        <span className="text-muted-foreground">Nguyên nhân: </span>
+        <span className="text-muted-foreground">Đã làm gì: </span>
         {note ? <span className="whitespace-pre-line">{note}</span> : <span className="text-muted-foreground italic">chưa ghi</span>}
       </p>
       <p className="mt-2 border-t pt-2 text-muted-foreground tabular-nums">
         Cả ngày {formatDuration(dayTotal * 3600)}
         {dayTarget > 0 && ` / ${formatHours(dayTarget)}`}
-        {canWrite && " · bấm để ghi nguyên nhân"}
+        {canWrite && " · bấm để ghi đã làm gì"}
       </p>
     </div>
   );

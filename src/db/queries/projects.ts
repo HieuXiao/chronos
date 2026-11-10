@@ -10,8 +10,18 @@ export interface ListProjectsOptions {
 export async function listProjects(options?: ListProjectsOptions): Promise<Project[]> {
   const db = await getDb();
   const where = options?.includeArchived ? "" : "WHERE archived = 0";
-  const rows = await db.select<ProjectRow[]>(`SELECT * FROM projects ${where} ORDER BY id`);
+  const rows = await db.select<ProjectRow[]>(`SELECT * FROM projects ${where} ORDER BY order_index, id`);
   return rows.map(toProject);
+}
+
+/** Rewrites `orderIndex` so the projects follow `orderedIds`. */
+export async function reorderProjects(orderedIds: Id[]): Promise<void> {
+  if (orderedIds.length === 0) return;
+  const db = await getDb();
+  // Single statement so the new order is applied atomically.
+  const cases = orderedIds.map((_, i) => `WHEN $${i + 1} THEN ${i}`).join(" ");
+  const placeholders = orderedIds.map((_, i) => `$${i + 1}`).join(", ");
+  await db.execute(`UPDATE projects SET order_index = CASE id ${cases} END WHERE id IN (${placeholders})`, orderedIds);
 }
 
 export async function getProject(id: Id): Promise<Project | null> {
@@ -25,8 +35,8 @@ export async function createProject(input: NewProject): Promise<Project> {
   const db = await getDb();
   const rows = await db.select<ProjectRow[]>(
     `INSERT INTO projects
-       (name, color, icon, target_hours, created_at, archived, start_date, end_date, sample, purpose)
-     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9)
+       (name, color, icon, target_hours, created_at, archived, start_date, end_date, purpose, order_index)
+     VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, (SELECT COALESCE(MAX(order_index), 0) + 1 FROM projects))
      RETURNING *`,
     [
       input.name.trim(),
@@ -36,7 +46,6 @@ export async function createProject(input: NewProject): Promise<Project> {
       nowUtc(),
       input.startDate ?? dayKey(Date.now()),
       input.endDate ?? null,
-      input.sample ? 1 : 0,
       input.purpose ?? null,
     ],
   );

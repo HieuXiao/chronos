@@ -12,7 +12,7 @@ export function TopBar() {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
 
   return (
-    <header data-tauri-drag-region className="flex h-11 shrink-0 select-none items-center border-b pl-4">
+    <header data-tauri-drag-region data-keep-sidebar className="flex h-11 shrink-0 select-none items-center border-b pl-4">
       <div data-tauri-drag-region className="flex items-center gap-2 text-sm font-semibold">
         <span className="pointer-events-none flex size-6 items-center justify-center rounded-md bg-primary/10">
           <Timer className="size-3.5 text-primary" />

@@ -1,11 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { useNow } from "@/hooks/useNow";
+import { periodLabel, periodRange, shiftAnchor, type ChartPeriod } from "@/lib/chart";
 import { goalOn, indexGoals, MAX_DAY_HOURS } from "@/lib/goals";
 import { dailyTotals } from "@/lib/stats";
 import { addLocalDays, dayKey, formatDuration, formatHours, startOfLocalDay } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
+import { PeriodPicker } from "./PeriodPicker";
+import { ReasonStats } from "./ReasonStats";
 import { WorkChart } from "./WorkChart";
 
 /** Part 1: work time today and the stacked-column report. */
@@ -60,7 +65,136 @@ export function ReportSection() {
           trung bình {formatDuration(weekSec / 7)}/ngày
         </div>
       </div>
-      <WorkChart nowMs={nowMs} />
+      <ReportPanel nowMs={nowMs} />
     </section>
+  );
+}
+
+const PERIOD_KEY = "chronos.chartPeriod";
+const TAB_KEY = "chronos.reportTab";
+type ReportTab = "chart" | "reasons";
+
+function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return allowed.includes(v as T) ? (v as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Preference only.
+  }
+}
+
+/** Two tabs over one period: time per day as a chart, and reasons for missed days. */
+function ReportPanel({ nowMs }: { nowMs: number }) {
+  const [tab, setTabState] = useState<ReportTab>(() => readPref(TAB_KEY, ["chart", "reasons"], "chart"));
+  const [period, setPeriodState] = useState<ChartPeriod>(() => readPref(PERIOD_KEY, ["week", "month", "year"], "week"));
+  const [anchorMs, setAnchorMs] = useState(() => Date.now());
+
+  const setTab = (t: ReportTab) => {
+    setTabState(t);
+    writePref(TAB_KEY, t);
+  };
+  const setPeriod = (p: ChartPeriod) => {
+    setPeriodState(p);
+    writePref(PERIOD_KEY, p);
+  };
+
+  const range = periodRange(period, anchorMs);
+  const isCurrent = range.startMs <= nowMs && nowMs < range.endMs;
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <div role="tablist" aria-label="Báo cáo" className="flex items-center gap-3">
+          {(
+            [
+              ["chart", "Thời gian"],
+              ["reasons", "Nguyên nhân"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={tab === value}
+              onClick={() => setTab(value)}
+              className={cn(
+                "-mb-px border-b-2 pb-0.5 text-[13px] transition-colors",
+                tab === value
+                  ? "border-primary font-semibold text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button variant="ghost" size="icon-xs" aria-label="Khoảng trước" onClick={() => setAnchorMs((a) => shiftAnchor(period, a, -1))}>
+            <ChevronLeft />
+          </Button>
+          <PeriodPicker
+            period={period}
+            anchorMs={anchorMs}
+            nowMs={nowMs}
+            label={periodLabel(period, anchorMs)}
+            onPick={setAnchorMs}
+          />
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Khoảng sau"
+            disabled={isCurrent}
+            onClick={() => setAnchorMs((a) => shiftAnchor(period, a, 1))}
+          >
+            <ChevronRight />
+          </Button>
+        </div>
+        <div role="radiogroup" aria-label="Khoảng thời gian" className="flex rounded-md bg-muted p-0.5">
+          {(
+            [
+              ["week", "Tuần"],
+              ["month", "Tháng"],
+              ["year", "Năm"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={period === value}
+              onClick={() => setPeriod(value)}
+              className={cn(
+                "rounded px-2 py-0.5 text-xs transition-colors",
+                period === value ? "bg-primary font-medium text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === "chart" ? (
+        <WorkChart
+          period={period}
+          anchorMs={anchorMs}
+          nowMs={nowMs}
+          onOpenMonth={(ms) => {
+            setPeriod("month");
+            setAnchorMs(ms);
+          }}
+        />
+      ) : (
+        <ReasonStats period={period} anchorMs={anchorMs} nowMs={nowMs} />
+      )}
+    </div>
   );
 }
