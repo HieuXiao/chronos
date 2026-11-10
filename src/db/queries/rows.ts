@@ -13,6 +13,7 @@ export interface ProjectRow {
   start_date: string | null;
   end_date: string | null;
   purpose: string | null;
+  order_index: number | null;
 }
 
 export interface SessionRow {
@@ -53,6 +54,7 @@ export function toProject(row: ProjectRow): Project {
     startDate: row.start_date ?? null,
     endDate: row.end_date ?? null,
     purpose: row.purpose ?? null,
+    orderIndex: row.order_index ?? 0,
   };
 }
 

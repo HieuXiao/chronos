@@ -53,6 +53,7 @@ Mọi dữ liệu nằm trong một file SQLite trên máy bạn. Không cần t
 - Tên, màu (bảng màu thân thiện với người mù màu), số giờ mục tiêu, ngày bắt đầu và hạn chót (tuỳ chọn).
 - Thanh tiến độ, giờ đã làm, giờ còn lại và **ngày hoàn thành dự kiến**.
 - Mỗi project có **todo list** (kéo thả để sắp xếp) và một **ghi chú** riêng.
+- **Kéo thả** thẻ project ở trang chủ để sắp xếp thứ tự.
 - Lưu trữ (archive) hoặc xoá vĩnh viễn.
 
 ### 📊 Dashboard
@@ -192,7 +193,7 @@ File dữ liệu: `data.db` trong thư mục cấu hình của app (trên Window
 
 | Bảng | Mô tả |
 |---|---|
-| `projects` | Project: tên, màu, giờ mục tiêu, ngày bắt đầu/kết thúc, trạng thái lưu trữ |
+| `projects` | Project: tên, màu, giờ mục tiêu, ngày bắt đầu/kết thúc, trạng thái lưu trữ, thứ tự hiển thị (`order_index`) |
 | `sessions` | Các phiên làm việc. `ended_at = NULL` nghĩa là timer đang chạy |
 | `todos` | Todo theo project, có thứ tự |
 | `notes` | Một ghi chú cho mỗi project |

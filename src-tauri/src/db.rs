@@ -67,5 +67,11 @@ pub fn migrations() -> Vec<Migration> {
             sql: include_str!("../../src/db/migrations/010_unified_palette.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 11,
+            description: "project_order",
+            sql: include_str!("../../src/db/migrations/011_project_order.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }

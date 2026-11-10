@@ -52,6 +52,8 @@ interface AppState {
   updateProject: (id: Id, patch: ProjectPatch) => Promise<boolean>;
   setProjectArchived: (id: Id, archived: boolean) => Promise<void>;
   deleteProject: (id: Id) => Promise<void>;
+  /** Puts the given projects in this order (drag and drop on the home page). */
+  reorderProjects: (orderedIds: Id[]) => Promise<void>;
 
   startTimer: (projectId: Id, options?: TimerOptions) => Promise<void>;
   stopTimer: (options?: TimerOptions) => Promise<void>;
@@ -156,6 +158,18 @@ export const useAppStore = create<AppState>()((set, get) => {
         useUiStore.getState().closeSidebarFor(id);
         await get().refresh();
       });
+    },
+
+    reorderProjects: async (orderedIds) => {
+      // Show the new order at once; the DB catches up behind it.
+      const position = new Map(orderedIds.map((id, i) => [id, i]));
+      const projects = get().projects.map((p) => (position.has(p.id) ? { ...p, orderIndex: position.get(p.id)! } : p));
+      set({ projects: [...projects].sort((a, b) => a.orderIndex - b.orderIndex || a.id - b.id) });
+      const ok = await attempt("Không lưu được thứ tự project", async () => {
+        await projectsDb.reorderProjects(orderedIds);
+        return true;
+      });
+      if (!ok) await get().refresh();
     },
 
     startTimer: (projectId, options) =>
