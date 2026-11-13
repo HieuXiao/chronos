@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import * as sessionsDb from "@/db/queries/sessions";
 import { projectColor } from "@/lib/colors";
 import { dayStatus, formatMinutes, goalOn, indexGoals } from "@/lib/goals";
 import { overlapSec } from "@/lib/stats";
@@ -22,7 +20,6 @@ export function ReportDialog() {
   const reports = useAppStore((s) => s.reports);
   const saveReport = useAppStore((s) => s.saveReport);
   const [note, setNote] = useState("");
-  const [sessionNotes, setSessionNotes] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const dayMs = target ? new Date(`${target.day}T00:00`).getTime() : 0;
@@ -30,25 +27,7 @@ export function ReportDialog() {
   useEffect(() => {
     if (!target) return;
     setNote(reports.find((r) => r.day === target.day && r.projectId === target.projectId)?.note ?? "");
-    setSessionNotes([]);
     setSaving(false);
-    // Notes written when stopping the timer that day, offered as a starting point.
-    let cancelled = false;
-    void sessionsDb
-      .listSessions({
-        projectId: target.projectId,
-        from: new Date(dayMs).toISOString(),
-        to: new Date(addLocalDays(dayMs, 1)).toISOString(),
-      })
-      .then((sessions) => {
-        if (cancelled) return;
-        const notes = sessions.map((s) => s.note?.trim() ?? "").filter((n) => n !== "");
-        setSessionNotes([...new Set(notes)]);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
     // Load once per opened report.
   }, [target]);
 
@@ -61,9 +40,6 @@ export function ReportDialog() {
     : 0;
   const minMinutes = target ? goalOn(indexGoals(goals).byProject.get(target.projectId), target.day) : 0;
   const status = dayStatus(actualSec, minMinutes);
-  const unused = sessionNotes.filter((n) => !note.includes(n));
-
-  const addLine = (line: string) => setNote((v) => (v.trim() ? `${v.trimEnd()}\n- ${line}` : `- ${line}`));
 
   const save = async () => {
     if (!target) return;
@@ -104,24 +80,6 @@ export function ReportDialog() {
             placeholder="VD: Học xong bài 5, làm 20 câu nghe, ôn lại từ vựng tuần trước."
           />
         </div>
-        {unused.length > 0 && (
-          <div className="grid gap-1.5">
-            <p className="text-xs text-muted-foreground">Ghi chú lúc dừng timer hôm đó</p>
-            <div className="flex flex-wrap gap-1.5">
-              {unused.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => addLine(n)}
-                  className="flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-xs hover:bg-muted"
-                >
-                  <Plus className="size-3 shrink-0" />
-                  <span className="truncate">{n}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
         <DialogFooter>
           <Button variant="outline" onClick={closeReport}>
             Huỷ

@@ -73,5 +73,11 @@ pub fn migrations() -> Vec<Migration> {
             sql: include_str!("../../src/db/migrations/011_project_order.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 12,
+            description: "merge_session_notes",
+            sql: include_str!("../../src/db/migrations/012_merge_session_notes.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }

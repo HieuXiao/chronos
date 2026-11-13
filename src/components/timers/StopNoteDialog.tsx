@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import * as sessionsDb from "@/db/queries/sessions";
+import { appendLine } from "@/lib/workLog";
 import * as todosDb from "@/db/queries/todos";
 import { attempt } from "@/lib/errors";
-import { formatDuration } from "@/lib/time";
+import { dayKey, formatDuration } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import { useUiStore } from "@/store/uiStore";
@@ -24,11 +25,17 @@ function fold(text: string): string {
   return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/gi, "d").toLowerCase();
 }
 
-/** Quick "vừa làm gì?" prompt shown after a timer stops. Skipping is fine. */
+/**
+ * Quick "vừa làm gì?" prompt shown after a timer stops. The answer is added as
+ * a line to that day's "Đã làm gì" of the project, the one place work notes
+ * live (also edited from the chart and shown in Lịch sử). Skipping is fine.
+ */
 export function StopNoteDialog() {
   const prompt = useUiStore((s) => s.notePrompt);
   const closeNotePrompt = useUiStore((s) => s.closeNotePrompt);
   const projects = useAppStore((s) => s.projects);
+  const reports = useAppStore((s) => s.reports);
+  const saveReport = useAppStore((s) => s.saveReport);
 
   const [session, setSession] = useState<Session | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -50,7 +57,6 @@ export function StopNoteDialog() {
       if (cancelled) return;
       setSession(s);
       setTodos(t);
-      if (s?.note) setText(s.note);
     });
     return () => {
       cancelled = true;
@@ -63,15 +69,16 @@ export function StopNoteDialog() {
   }, [todos, text]);
 
   const project = projects.find((p) => p.id === prompt?.projectId);
+  // The day the timer stopped on.
+  const day = dayKey(session?.endedAt ? Date.parse(session.endedAt) : Date.now());
+  const dayNote = prompt ? (reports.find((r) => r.day === day && r.projectId === prompt.projectId)?.note ?? "") : "";
 
   const save = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!prompt) return;
-    const sessionId = prompt.sessionId;
+    const { projectId } = prompt;
     closeNotePrompt();
-    if (text.trim()) {
-      await attempt("Không lưu được ghi chú", () => sessionsDb.setSessionNote(sessionId, text));
-    }
+    if (text.trim()) await saveReport(day, projectId, appendLine(dayNote, text));
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -100,7 +107,7 @@ export function StopNoteDialog() {
             <DialogTitle>Vừa làm gì?</DialogTitle>
             <DialogDescription>
               {project?.name ?? "Project"}
-              {session?.durationSec != null && ` · ${formatDuration(session.durationSec)}`} — có thể bỏ qua.
+              {session?.durationSec != null && ` · ${formatDuration(session.durationSec)}`} · thêm vào "Đã làm gì" hôm nay
             </DialogDescription>
           </DialogHeader>
 
@@ -116,6 +123,11 @@ export function StopNoteDialog() {
               autoFocus
               maxLength={500}
             />
+            {dayNote && (
+              <p className="mt-1 line-clamp-3 whitespace-pre-line text-xs text-muted-foreground" title={dayNote}>
+                {dayNote}
+              </p>
+            )}
             {suggestions.length > 0 && (
               <ul className="mt-1 grid gap-0.5 rounded-md border p-1" role="listbox" aria-label="Gợi ý từ todo">
                 {suggestions.map((todo, i) => (

@@ -12,6 +12,7 @@ import { useAppStore } from "@/store/appStore";
 import { PeriodPicker } from "./PeriodPicker";
 import { ReasonStats } from "./ReasonStats";
 import { WorkChart } from "./WorkChart";
+import { WorkHistory } from "./WorkHistory";
 
 /** Part 1: work time today and the stacked-column report. */
 export function ReportSection() {
@@ -72,7 +73,7 @@ export function ReportSection() {
 
 const PERIOD_KEY = "chronos.chartPeriod";
 const TAB_KEY = "chronos.reportTab";
-type ReportTab = "chart" | "reasons";
+type ReportTab = "chart" | "reasons" | "history";
 
 function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -91,9 +92,9 @@ function writePref(key: string, value: string) {
   }
 }
 
-/** Two tabs over one period: time per day as a chart, and reasons for missed days. */
+/** Tabs over one period: time per day as a chart, reasons for missed days, and the work log. */
 function ReportPanel({ nowMs }: { nowMs: number }) {
-  const [tab, setTabState] = useState<ReportTab>(() => readPref(TAB_KEY, ["chart", "reasons"], "chart"));
+  const [tab, setTabState] = useState<ReportTab>(() => readPref(TAB_KEY, ["chart", "reasons", "history"], "chart"));
   const [period, setPeriodState] = useState<ChartPeriod>(() => readPref(PERIOD_KEY, ["week", "month", "year"], "week"));
   const [anchorMs, setAnchorMs] = useState(() => Date.now());
 
@@ -117,6 +118,7 @@ function ReportPanel({ nowMs }: { nowMs: number }) {
             [
               ["chart", "Thời gian"],
               ["reasons", "Nguyên nhân"],
+              ["history", "Lịch sử"],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -192,8 +194,10 @@ function ReportPanel({ nowMs }: { nowMs: number }) {
             setAnchorMs(ms);
           }}
         />
-      ) : (
+      ) : tab === "reasons" ? (
         <ReasonStats period={period} anchorMs={anchorMs} nowMs={nowMs} />
+      ) : (
+        <WorkHistory period={period} anchorMs={anchorMs} nowMs={nowMs} />
       )}
     </div>
   );
