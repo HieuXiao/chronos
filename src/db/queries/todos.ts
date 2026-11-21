@@ -1,6 +1,6 @@
 import { getDb } from "@/db/client";
 import { nowUtc } from "@/lib/time";
-import type { Id, NewTodo, Todo, TodoPatch } from "@/types";
+import type { Id, NewTodo, Todo } from "@/types";
 import { expectRow, toTodo, type TodoRow } from "./rows";
 
 const ORDER = "ORDER BY order_index IS NULL, order_index, id";
@@ -38,22 +38,6 @@ export async function createTodo(input: NewTodo): Promise<Todo> {
     [input.projectId, input.text.trim(), nowUtc()],
   );
   return toTodo(expectRow(rows, "todo vừa tạo"));
-}
-
-export async function updateTodo(id: Id, patch: TodoPatch): Promise<Todo> {
-  if (patch.done !== undefined) {
-    await setTodoDone(id, patch.done);
-  }
-  const db = await getDb();
-  const rows = await db.select<TodoRow[]>(
-    `UPDATE todos
-     SET text = COALESCE($1, text),
-         order_index = COALESCE($2, order_index)
-     WHERE id = $3
-     RETURNING *`,
-    [patch.text?.trim() ?? null, patch.orderIndex ?? null, id],
-  );
-  return toTodo(expectRow(rows, "todo"));
 }
 
 export async function setTodoDone(id: Id, done: boolean): Promise<Todo> {

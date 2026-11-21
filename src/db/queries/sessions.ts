@@ -3,10 +3,8 @@ import { diffSec, nowUtc } from "@/lib/time";
 import type {
   Id,
   IsoUtc,
-  NewManualSession,
   Session,
   SessionFilter,
-  SessionPatch,
   SessionSpan,
 } from "@/types";
 import { expectRow, first, toSession, toSessionSpan, type SessionRow } from "./rows";
@@ -127,61 +125,3 @@ export async function discardIdleFromRunning(idleFrom: IsoUtc, resumeAt: IsoUtc)
   return started;
 }
 
-export async function createManualSession(input: NewManualSession): Promise<Session> {
-  assertValidRange(input.startedAt, input.endedAt);
-  const db = await getDb();
-  const rows = await db.select<SessionRow[]>(
-    `INSERT INTO sessions (project_id, started_at, ended_at, duration_sec, note, source)
-     VALUES ($1, $2, $3, $4, $5, 'manual')
-     RETURNING *`,
-    [
-      input.projectId,
-      input.startedAt,
-      input.endedAt,
-      diffSec(input.startedAt, input.endedAt),
-      normalizeNote(input.note),
-    ],
-  );
-  return toSession(expectRow(rows, "session vừa tạo"));
-}
-
-export async function updateSession(id: Id, patch: SessionPatch): Promise<Session> {
-  const current = await getSession(id);
-  if (!current) throw new Error("Không tìm thấy session");
-  const next = { ...current, ...patch };
-  if (next.endedAt !== null) assertValidRange(next.startedAt, next.endedAt);
-  const duration = next.endedAt === null ? null : diffSec(next.startedAt, next.endedAt);
-
-  const db = await getDb();
-  const rows = await db.select<SessionRow[]>(
-    `UPDATE sessions
-     SET project_id = $1, started_at = $2, ended_at = $3, duration_sec = $4, note = $5
-     WHERE id = $6
-     RETURNING *`,
-    [next.projectId, next.startedAt, next.endedAt, duration, normalizeNote(next.note), id],
-  );
-  return toSession(expectRow(rows, "session"));
-}
-
-export async function setSessionNote(id: Id, note: string | null): Promise<void> {
-  const db = await getDb();
-  await db.execute("UPDATE sessions SET note = $1 WHERE id = $2", [normalizeNote(note), id]);
-}
-
-export async function deleteSession(id: Id): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM sessions WHERE id = $1", [id]);
-}
-
-function assertValidRange(startedAt: IsoUtc, endedAt: IsoUtc): void {
-  const start = Date.parse(startedAt);
-  const end = Date.parse(endedAt);
-  if (Number.isNaN(start) || Number.isNaN(end)) throw new Error("Thời gian không hợp lệ");
-  if (end <= start) throw new Error("Thời điểm kết thúc phải sau thời điểm bắt đầu");
-  if (end > Date.now() + 60_000) throw new Error("Không thể kết thúc ở tương lai");
-}
-
-function normalizeNote(note: string | null | undefined): string | null {
-  const trimmed = note?.trim();
-  return trimmed ? trimmed : null;
-}

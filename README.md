@@ -97,10 +97,17 @@ npm run tauri dev
 ```
 
 ```bash
-npm run tauri build
+npm run release
 ```
 
-Lệnh `tauri dev` chạy app ở chế độ phát triển. Lệnh `tauri build` tạo file cài đặt trong `src-tauri/target/release/bundle/`.
+Lệnh `tauri dev` chạy app ở chế độ phát triển. Lệnh `release` build app rồi chép file cài đặt ra thư mục `release/` ở gốc project:
+
+- `release/Chronos Setup <phiên bản>.exe`: bộ cài cho người dùng (khuyên dùng, giao diện tiếng Việt).
+- `release/Chronos <phiên bản>.msi`: bộ cài MSI.
+
+Mỗi lần chạy, thư mục `release/` được làm mới nên chỉ còn bản mới nhất. Nếu đã build bằng `npm run tauri build`, chạy `npm run release:collect` để chép file ra mà không build lại.
+
+Icon của app được vẽ từ `src-tauri/icons/app-icon.svg`. Sau khi sửa file này, chạy `npm run icons` để tạo lại các cỡ icon.
 
 ## Giấy phép
 
