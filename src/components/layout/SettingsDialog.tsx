@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { ArchiveRestore, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DataLocationSection } from "@/components/layout/DataLocationSection";
@@ -11,10 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { TOGGLE_SHORTCUT_LABEL } from "@/hooks/useSystemIntegration";
 import { projectColor } from "@/lib/colors";
-import { attempt } from "@/lib/errors";
 import { goalOn, indexGoals, MAX_DAY_HOURS, minutesToInput, parseHoursInput } from "@/lib/goals";
 import { dayKey } from "@/lib/time";
 import { useAppStore } from "@/store/appStore";
@@ -35,7 +32,7 @@ export function SettingsDialog() {
         <div className="grid gap-7">
           <DayTargetSection open={open} />
           <ThemeSection />
-          <GeneralSection open={open} />
+          <GeneralSection />
           <div className="grid gap-7 border-t pt-6">
             <ExportSection />
             <ArchivedSection />
@@ -90,40 +87,14 @@ function DayTargetSection({ open }: { open: boolean }) {
   );
 }
 
-function GeneralSection({ open }: { open: boolean }) {
-  const [autostart, setAutostart] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    void attempt("Không đọc được cài đặt khởi động", async () => setAutostart(await isEnabled()));
-  }, [open]);
-
-  const changeAutostart = async (value: boolean) => {
-    setAutostart(value);
-    const ok = await attempt("Không đổi được cài đặt khởi động", () => (value ? enable() : disable()));
-    if (ok === undefined) setAutostart(await isEnabled().catch(() => !value));
-  };
-
+function GeneralSection() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1.5">
-          <Label htmlFor="autostart">Khởi động cùng Windows</Label>
-          <InfoTip>Chạy ẩn dưới khay hệ thống khi đăng nhập.</InfoTip>
-        </div>
-        <Switch
-          id="autostart"
-          checked={autostart ?? false}
-          disabled={autostart === null}
-          onCheckedChange={(v) => void changeAutostart(v)}
-        />
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5">
           <Label>Phím tắt bật/dừng timer</Label>
           <InfoTip>
-            Bật lại timer gần nhất, hoặc dừng timer đang chạy. Nút đóng cửa sổ chỉ thu Chronos xuống khay; chọn “Thoát” ở
-            khay để tắt hẳn.
+            Bật lại timer gần nhất, hoặc dừng timer đang chạy. Chỉ hoạt động khi Chronos đang mở; đóng app sẽ dừng timer.
           </InfoTip>
         </div>
         <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-xs">{TOGGLE_SHORTCUT_LABEL}</kbd>

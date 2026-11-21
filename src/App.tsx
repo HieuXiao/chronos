@@ -12,6 +12,9 @@ import { StopNoteDialog } from "@/components/timers/StopNoteDialog";
 import { Toaster } from "@/components/ui/sonner";
 import { useIdleWatcher } from "@/hooks/useIdleWatcher";
 import { useSystemIntegration } from "@/hooks/useSystemIntegration";
+import { useTimerLifecycle } from "@/hooks/useTimerLifecycle";
+import { MiniClock } from "@/components/mini/MiniClock";
+import { useUiStore } from "@/store/uiStore";
 import { useAppStore } from "@/store/appStore";
 
 /** One page: the report on top, the project cards below, details in a sidebar. */
@@ -19,6 +22,7 @@ export default function App() {
   const init = useAppStore((s) => s.init);
   const dbStatus = useAppStore((s) => s.dbStatus);
   const dbError = useAppStore((s) => s.dbError);
+  const mini = useUiStore((s) => s.mini);
 
   useEffect(() => {
     void init();
@@ -33,39 +37,49 @@ export default function App() {
     );
   }
 
+  const ready = dbStatus === "ready";
+
   return (
     <>
-      <div className="flex h-full flex-col">
-        <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          {dbStatus === "ready" && (
+      {/* Kept at a fixed place so switching to the mini clock never remounts it. */}
+      {ready && <BackgroundServices />}
+      {ready && mini ? (
+        <MiniClock />
+      ) : (
+        <>
+          <div className="flex h-full flex-col">
+            <TopBar />
+            <main className="min-h-0 flex-1 overflow-y-auto">
+              {ready && (
+                <>
+                  <ReportSection />
+                  <ProjectGrid />
+                </>
+              )}
+            </main>
+          </div>
+          {ready && (
             <>
-              <ReportSection />
-              <ProjectGrid />
+              <Sidebar />
+              <ReportDialog />
+              <DayReasonDialog />
             </>
           )}
-        </main>
-      </div>
-      {dbStatus === "ready" && (
-        <>
-          <BackgroundServices />
-          <Sidebar />
-          <ReportDialog />
-          <DayReasonDialog />
+          <ProjectDialog />
+          <StopNoteDialog />
+          <SettingsDialog />
         </>
       )}
-      <ProjectDialog />
-      <StopNoteDialog />
       <IdleDialog />
-      <SettingsDialog />
       <Toaster />
     </>
   );
 }
 
-/** Hotkey, tray sync, idle detection and day rollover; mounted once the DB is ready. */
+/** Hotkey, timer lifecycle, taskbar ring, idle detection and day rollover; mounted once the DB is ready. */
 function BackgroundServices() {
   useSystemIntegration();
+  useTimerLifecycle();
   useIdleWatcher();
   useDayRollover();
   return null;

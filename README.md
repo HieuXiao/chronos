@@ -52,7 +52,8 @@ Mọi dữ liệu nằm trên máy bạn. Không cần tài khoản, không có 
 ![Tab Nguyên nhân](docs/screenshots/reasons.png)
 
 **Chạy nền**
-- Đóng cửa sổ thì app thu xuống khay hệ thống, timer vẫn chạy. Rê chuột vào biểu tượng khay để xem timer đang chạy.
+- Chronos chỉ chạy khi cửa sổ đang mở, không chạy ngầm. Đóng app sẽ dừng timer đang chạy.
+- Chế độ đồng hồ nhỏ: thu app thành một đồng hồ luôn nổi trên các cửa sổ khác. Biểu tượng trên taskbar hiện vòng thời gian của timer đang chạy.
 - Tuỳ chọn khởi động cùng Windows.
 - Giao diện sáng, tối hoặc theo hệ thống.
 - Sao lưu toàn bộ dữ liệu ra JSON, hoặc xuất bảng các lần làm việc ra CSV để mở bằng Excel.

@@ -10,6 +10,16 @@ pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
     std::fs::write(&path, contents).map_err(|e| format!("Không ghi được file: {e}"))
 }
 
+/// Puts the app icon back on the window (taskbar) after a timer ring was drawn on it.
+#[tauri::command]
+pub fn reset_window_icon(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .ok_or("Không có icon mặc định")?;
+    window.set_icon(icon).map_err(|e| e.to_string())
+}
+
 #[cfg(windows)]
 fn idle_seconds() -> u64 {
     use windows_sys::Win32::System::SystemInformation::GetTickCount;
