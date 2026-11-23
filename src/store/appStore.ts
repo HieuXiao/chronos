@@ -18,6 +18,7 @@ import type {
   SessionSpan,
 } from "@/types";
 import { useUiStore } from "./uiStore";
+import { ALIVE_STALE_MS, readAlive } from "@/hooks/useTimerLifecycle";
 
 export type DbStatus = "idle" | "connecting" | "ready" | "error";
 
@@ -59,7 +60,7 @@ interface AppState {
   stopTimer: (options?: TimerOptions) => Promise<void>;
   /** Play/pause on a project card. */
   toggleProjectTimer: (projectId: Id, options?: TimerOptions) => Promise<void>;
-  /** Hotkey / tray: stop the running timer, or restart the most recently used project. */
+  /** Hotkey / mini clock: stop the running timer, or restart the most recently used project. */
   toggleLastTimer: (options?: TimerOptions) => Promise<void>;
   /** Drops [idleFromMs, resumeAtMs) from the running session. */
   discardIdle: (idleFromMs: number, resumeAtMs: number) => Promise<void>;
@@ -73,12 +74,26 @@ interface AppState {
 }
 
 // Timer operations run strictly one after another so that rapid clicks,
-// the hotkey and the tray menu can never start two sessions at once.
+// the hotkey and the mini clock can never start two sessions at once.
 let timerQueue: Promise<unknown> = Promise.resolve();
 function serial<T>(fn: () => Promise<T>): Promise<T> {
   const run = timerQueue.then(fn, fn);
   timerQueue = run.catch(() => undefined);
   return run;
+}
+
+/**
+ * Chronos only tracks time while it is open, and closing it stops the timer.
+ * A timer still running at start-up was left by a crash or a kill: end it at
+ * the last heartbeat instead of counting the time the app was not open.
+ */
+async function endTimerLeftByCrash() {
+  const alive = readAlive();
+  if (alive === null || Date.now() - alive < ALIVE_STALE_MS) return;
+  const running = await sessionsDb.getRunningSession();
+  if (!running) return;
+  const end = Math.max(alive, Date.parse(running.startedAt));
+  await sessionsDb.stopRunningSession(new Date(end).toISOString());
 }
 
 export const useAppStore = create<AppState>()((set, get) => {
@@ -106,6 +121,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       set({ dbStatus: "connecting", dbError: null });
       try {
         await getDb();
+        await endTimerLeftByCrash();
         set({ dbStatus: "ready" });
         await get().refresh();
       } catch (err) {

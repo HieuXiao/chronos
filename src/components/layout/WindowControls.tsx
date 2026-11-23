@@ -19,7 +19,7 @@ function Glyph({ kind }: { kind: "min" | "max" | "restore" | "close" }) {
   );
 }
 
-/** Minimize / maximize-restore / close for the frameless window. Close hides to the tray. */
+/** Minimize / maximize-restore / close for the frameless window. Closing quits the app (and stops the timer). */
 export function WindowControls() {
   const [maximized, setMaximized] = useState(false);
 
@@ -70,8 +70,8 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label="Đóng (ẩn xuống khay)"
-        title="Đóng (ẩn xuống khay)"
+        aria-label="Đóng Chronos"
+        title="Đóng Chronos (dừng timer đang chạy)"
         className={cn(base, "hover:bg-[#c42b1c] hover:text-white focus-visible:bg-[#c42b1c] focus-visible:text-white")}
         onClick={run((w) => w.close())}
       >

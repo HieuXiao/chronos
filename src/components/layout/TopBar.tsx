@@ -1,5 +1,6 @@
-import { Settings, Timer } from "lucide-react";
+import { PictureInPicture2, Settings, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { enterMini } from "@/lib/miniWindow";
 import { useUiStore } from "@/store/uiStore";
 import { RunningIndicator } from "./RunningIndicator";
 import { WindowControls } from "./WindowControls";
@@ -24,6 +25,15 @@ export function TopBar() {
         <div className="min-w-0">
           <RunningIndicator />
         </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => void enterMini().catch(() => undefined)}
+          aria-label="Đồng hồ nhỏ"
+          title="Đồng hồ nhỏ (luôn nổi trên các cửa sổ khác)"
+        >
+          <PictureInPicture2 />
+        </Button>
         <Button variant="ghost" size="icon-sm" onClick={() => setSettingsOpen(true)} aria-label="Cài đặt" title="Cài đặt">
           <Settings />
         </Button>

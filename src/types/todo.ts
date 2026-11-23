@@ -14,5 +14,3 @@ export interface NewTodo {
   projectId: Id;
   text: string;
 }
-
-export type TodoPatch = Partial<Pick<Todo, "text" | "done" | "orderIndex">>;

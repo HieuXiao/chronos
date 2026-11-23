@@ -13,11 +13,6 @@ export function nowUtc(): IsoUtc {
   return new Date().toISOString();
 }
 
-/** Normalizes a Date to an ISO 8601 UTC string. */
-export function toUtc(date: Date): IsoUtc {
-  return date.toISOString();
-}
-
 /** Whole seconds between two UTC timestamps (never negative). */
 export function diffSec(startedAt: IsoUtc, endedAt: IsoUtc): number {
   return Math.max(0, Math.round((Date.parse(endedAt) - Date.parse(startedAt)) / 1000));
@@ -100,22 +95,3 @@ export function weekdayName(date: Date | number): string {
   return WEEKDAYS[d.getDay()] ?? "";
 }
 
-/** UTC ISO → value for `<input type="datetime-local">` (local time, minute precision). */
-export function toDateTimeInput(iso: IsoUtc): string {
-  const d = new Date(iso);
-  return `${dayKey(d)}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
-/** `<input type="datetime-local">` value (local) → UTC ISO. Returns null when invalid. */
-export function fromDateTimeInput(value: string): IsoUtc | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-/** `<input type="date">` value (local day) → UTC ISO of that local midnight. */
-export function fromDateInput(value: string): IsoUtc | null {
-  if (!value) return null;
-  const d = new Date(`${value}T00:00`);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}

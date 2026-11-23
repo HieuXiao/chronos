@@ -1,4 +1,4 @@
-import type { DailyGoal, Id, LocalDate, Project, SessionSpan } from "@/types";
+import type { DailyGoal, Id, LocalDate, SessionSpan } from "@/types";
 import { addLocalDays, dayKey, startOfLocalDay } from "./time";
 
 /**
@@ -79,14 +79,6 @@ export function dayStatus(actualSec: number, targetMin: number): DayStatus | nul
   return actualMin >= targetMin * OVER_RATIO && actualMin - targetMin >= OVER_MIN_MINUTES ? "over" : "met";
 }
 
-/** Whether `project` counts on `day`: active and within its start date / deadline. */
-export function projectActiveOn(project: Project, day: LocalDate): boolean {
-  if (project.archived) return false;
-  if (project.startDate && day < project.startDate) return false;
-  if (project.endDate && day > project.endDate) return false;
-  return true;
-}
-
 /**
  * Days in a row the project did its part: met its minimum when it has one,
  * otherwise any tracked time. Ends yesterday, or today once today counts.
@@ -111,18 +103,6 @@ export function projectStreak(
     streak += 1;
   }
   return streak;
-}
-
-/** Local days from `from` to `to` inclusive. */
-export function eachDay(from: LocalDate, to: LocalDate): LocalDate[] {
-  const days: LocalDate[] = [];
-  let ms = new Date(`${from}T00:00`).getTime();
-  const end = new Date(`${to}T00:00`).getTime();
-  while (ms <= end && days.length < 5000) {
-    days.push(dayKey(ms));
-    ms = addLocalDays(ms, 1);
-  }
-  return days;
 }
 
 // ---- Input helpers ---------------------------------------------------------

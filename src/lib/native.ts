@@ -10,17 +10,10 @@ export function writeTextFile(path: string, contents: string): Promise<void> {
   return invoke("write_text_file", { path, contents });
 }
 
-export interface TrayTimer {
-  projectName: string;
-  startedAtMs: number;
+/** Puts the app icon back on the window/taskbar after a timer ring was drawn on it. */
+export function resetWindowIcon(): Promise<void> {
+  return invoke("reset_window_icon");
 }
-
-export function setTrayTimer(running: TrayTimer | null, lastProjectName: string | null): Promise<void> {
-  return invoke("set_tray_timer", { running, lastProjectName });
-}
-
-/** Event emitted by the tray menu's Start/Stop item. */
-export const TRAY_TOGGLE_EVENT = "tray://toggle-timer";
 
 export interface DataLocation {
   /** Folder that holds `data.db`. */

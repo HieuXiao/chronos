@@ -52,7 +52,8 @@ Mọi dữ liệu nằm trên máy bạn. Không cần tài khoản, không có 
 ![Tab Nguyên nhân](docs/screenshots/reasons.png)
 
 **Chạy nền**
-- Đóng cửa sổ thì app thu xuống khay hệ thống, timer vẫn chạy. Rê chuột vào biểu tượng khay để xem timer đang chạy.
+- Chronos chỉ chạy khi cửa sổ đang mở, không chạy ngầm. Đóng app sẽ dừng timer đang chạy.
+- Chế độ đồng hồ nhỏ: thu app thành một đồng hồ luôn nổi trên các cửa sổ khác. Biểu tượng trên taskbar hiện vòng thời gian của timer đang chạy.
 - Tuỳ chọn khởi động cùng Windows.
 - Giao diện sáng, tối hoặc theo hệ thống.
 - Sao lưu toàn bộ dữ liệu ra JSON, hoặc xuất bảng các lần làm việc ra CSV để mở bằng Excel.
@@ -96,10 +97,17 @@ npm run tauri dev
 ```
 
 ```bash
-npm run tauri build
+npm run release
 ```
 
-Lệnh `tauri dev` chạy app ở chế độ phát triển. Lệnh `tauri build` tạo file cài đặt trong `src-tauri/target/release/bundle/`.
+Lệnh `tauri dev` chạy app ở chế độ phát triển. Lệnh `release` build app rồi chép file cài đặt ra thư mục `release/` ở gốc project:
+
+- `release/Chronos Setup <phiên bản>.exe`: bộ cài cho người dùng (khuyên dùng, giao diện tiếng Việt).
+- `release/Chronos <phiên bản>.msi`: bộ cài MSI.
+
+Mỗi lần chạy, thư mục `release/` được làm mới nên chỉ còn bản mới nhất. Nếu đã build bằng `npm run tauri build`, chạy `npm run release:collect` để chép file ra mà không build lại.
+
+Icon của app được vẽ từ `src-tauri/icons/app-icon.svg`. Sau khi sửa file này, chạy `npm run icons` để tạo lại các cỡ icon.
 
 ## Giấy phép
 

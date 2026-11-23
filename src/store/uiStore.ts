@@ -31,7 +31,10 @@ interface UiState {
   report: ReportTarget | null;
   /** The day whose missed-goal reason is being written. */
   dayReason: LocalDate | null;
+  /** The window is shrunk to the always-on-top mini clock. */
+  mini: boolean;
 
+  setMini: (mini: boolean) => void;
   openSidebar: (projectId: Id) => void;
   closeSidebar: () => void;
   closeSidebarFor: (projectId: Id) => void;
@@ -54,7 +57,9 @@ export const useUiStore = create<UiState>()((set, get) => ({
   settingsOpen: false,
   report: null,
   dayReason: null,
+  mini: false,
 
+  setMini: (mini) => set({ mini }),
   openSidebar: (projectId) => set({ sidebarProjectId: projectId }),
   closeSidebar: () => set({ sidebarProjectId: null }),
   closeSidebarFor: (projectId) => {
